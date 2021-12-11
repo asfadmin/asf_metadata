@@ -108,14 +108,154 @@ def iso_template2lists(excelFile, workSheet):
   return (isoTemplate, isoParams, isoValues)
 
 
+def merge_iso_dem_template(isoTemplate, demTemplate):
+
+  ### Analyze ISO template
+  maxIdentificationInfo = 0
+  maxIdentificationIndex = 0
+  maxContentInfo = 0
+  maxContentIndex = 0
+  for ii in range(len(isoTemplate)):
+    testLevel = isoTemplate[ii][-2:-1]
+    if isoTemplate[ii][:-3].endswith('identificationInfo'):
+      if maxIdentificationInfo < int(testLevel):
+        maxIdentificationInfo = int(testLevel)
+    if 'identificationInfo' in isoTemplate[ii] and maxIdentificationIndex < ii:
+      maxIdentificationIndex = ii
+    if isoTemplate[ii][:-3].endswith('contentInfo'):
+      if maxContentInfo < int(testLevel):
+        maxContentInfo = int(testLevel)
+    if 'contentInfo' in isoTemplate[ii] and maxContentIndex < ii:
+      maxContentIndex = ii
+
+  ### Analyze DEM template
+  maxIndex = 0
+  for ii in range(len(demTemplate)):
+    if 'identificationInfo' in demTemplate[ii] and maxIndex < ii:
+      maxIndex = ii
+
+  ### Combine ISO and DEM templates
+  mergedTemplate = []
+  for ii in range(maxIdentificationIndex+1):
+    mergedTemplate.append(isoTemplate[ii])
+  originalString = 'identificationInfo[1]'
+  replaceString = ('identificationInfo[{0}]'.format(maxIdentificationInfo+1))
+  for ii in range(maxIndex+1):
+    if 'identificationInfo' in demTemplate[ii]:
+      demInfo = demTemplate[ii].replace(originalString, replaceString)
+      mergedTemplate.append(demInfo)
+  for ii in range(maxIdentificationIndex+1, maxContentIndex+1):
+    mergedTemplate.append(isoTemplate[ii])
+  originalString = 'contentInfo[1]'
+  replaceString = ('contentInfo[{0}]'.format(maxIdentificationInfo+1))
+  for ii in range(maxIndex+1, len(demTemplate)):
+    demInfo = demTemplate[ii].replace(originalString, replaceString)
+    mergedTemplate.append(demInfo)
+  for ii in range(maxContentIndex+1, len(isoTemplate)):
+    mergedTemplate.append(isoTemplate[ii])
+
+  return mergedTemplate
+
+
+def add_dem_lists(isoTemplate, isoParams, isoValues, 
+  demTemplate, demParams, demValues):
+
+  ### Analyze ISO template
+  maxIdentificationInfo = 0
+  maxIdentificationIndex = 0
+  maxContentInfo = 0
+  maxContentIndex = 0
+  for ii in range(len(isoTemplate)):
+    testLevel = isoTemplate[ii][-2:-1]
+    if isoTemplate[ii][:-3].endswith('identificationInfo'):
+      if maxIdentificationInfo < int(testLevel):
+        maxIdentificationInfo = int(testLevel)
+    if 'identificationInfo' in isoTemplate[ii] and maxIdentificationIndex < ii:
+      maxIdentificationIndex = ii
+    if isoTemplate[ii][:-3].endswith('contentInfo'):
+      if maxContentInfo < int(testLevel):
+        maxContentInfo = int(testLevel)
+    if 'contentInfo' in isoTemplate[ii] and maxContentIndex < ii:
+      maxContentIndex = ii
+
+  ### Analyze DEM template
+  maxIndex = 0
+  for ii in range(len(demTemplate)):
+    if 'identificationInfo' in demTemplate[ii] and maxIndex < ii:
+      maxIndex = ii
+
+  ### Combine ISO and DEM templates
+  mergedTemplate = []
+  for ii in range(maxIdentificationIndex+1):
+    mergedTemplate.append(isoTemplate[ii])
+  originalString = 'identificationInfo[1]'
+  replaceString = ('identificationInfo[{0}]'.format(maxIdentificationInfo+1))
+  for ii in range(maxIndex+1):
+    if 'identificationInfo' in demTemplate[ii]:
+      demInfo = demTemplate[ii].replace(originalString, replaceString)
+      mergedTemplate.append(demInfo)
+  for ii in range(maxIdentificationIndex+1, maxContentIndex+1):
+    mergedTemplate.append(isoTemplate[ii])
+  originalString = 'contentInfo[1]'
+  replaceString = ('contentInfo[{0}]'.format(maxIdentificationInfo+1))
+  for ii in range(maxIndex+1, len(demTemplate)):
+    demInfo = demTemplate[ii].replace(originalString, replaceString)
+    mergedTemplate.append(demInfo)
+  for ii in range(maxContentIndex+1, len(isoTemplate)):
+    mergedTemplate.append(isoTemplate[ii])
+
+  ### Analyze ISO params and values
+  maxIdentificationIndex = 0
+  maxContentIndex = 0
+  for ii in range(len(isoParams)):
+    if 'identificationInfo' in isoParams[ii] and maxIdentificationIndex < ii:
+      maxIdentificationIndex = ii
+    if 'contentInfo' in isoParams[ii] and maxContentIndex < ii:
+      maxContentIndex = ii
+
+  ### Analyze DEM params
+  maxIndex = 0
+  for ii in range(len(demParams)):
+    if 'identificationInfo' in demParams[ii] and maxIndex < ii:
+      maxIndex = ii
+
+  ### Combine ISO and DEM params and values
+  mergedParams = []
+  mergedValues = []
+  for ii in range(maxIdentificationIndex+1):
+    mergedParams.append(isoParams[ii])
+    mergedValues.append(isoValues[ii])
+  originalString = 'identificationInfo[1]'
+  replaceString = ('identificationInfo[{0}]'.format(maxIdentificationInfo+1))
+  for ii in range(maxIndex+1):
+    demInfo = demParams[ii].replace(originalString, replaceString)
+    mergedParams.append(demInfo)
+    mergedValues.append(demValues[ii])
+  for ii in range(maxIdentificationIndex+1, maxContentIndex+1):
+    mergedParams.append(isoParams[ii])
+    mergedValues.append(isoValues[ii])
+  originalString = 'contentInfo[1]'
+  replaceString = ('contentInfo[{0}]'.format(maxIdentificationInfo+1))
+  for ii in range(maxIndex+1, len(demParams)):
+    demInfo = demParams[ii].replace(originalString, replaceString)
+    mergedParams.append(demInfo)
+    mergedValues.append(demValues[ii])
+  for ii in range(maxContentIndex+1, len(isoParams)):
+    mergedParams.append(isoParams[ii])
+    mergedValues.append(isoValues[ii])
+
+  return (mergedTemplate, mergedParams, mergedValues)
+
+
 def iso_attributes2lists(excelFile):
 
   ### ISO metadata structure
   meta = pd.read_excel(excelFile, sheet_name='ISO Metadata Structure')
   isoAttributes = list(meta['Attribute'])
   isoAttributeValues = list(meta['AttributeValue'])
+  (isoTemplate, _, _) = iso_template2lists(excelFile, 'ISO Metadata Structure')
 
-  return (isoAttributes, isoAttributeValues)
+  return (isoAttributes, isoAttributeValues, isoTemplate)
 
 
 def iso_xml_structure(excelFile, isoTemplate, isoParams, isoValues, nsFlag):
@@ -259,10 +399,57 @@ def iso_xml_structure(excelFile, isoTemplate, isoParams, isoValues, nsFlag):
   return root
 
 
-def iso_dictionary_structure(excelFile, metaTemplate, metaParams, metaValues):
+def add_dem_attributes(isoAttributes, demAttributes, isoTemplate, demTemplate):
+
+  ### Analyze ISO template
+  maxIdentificationInfo = 0
+  maxIdentificationIndex = 0
+  maxContentInfo = 0
+  maxContentIndex = 0
+  for ii in range(len(isoTemplate)):
+    testLevel = isoTemplate[ii][-2:-1]
+    if isoTemplate[ii][:-3].endswith('identificationInfo'):
+      if maxIdentificationInfo < int(testLevel):
+        maxIdentificationInfo = int(testLevel)
+    if 'identificationInfo' in isoTemplate[ii] and maxIdentificationIndex < ii:
+      maxIdentificationIndex = ii
+    if isoTemplate[ii][:-3].endswith('contentInfo'):
+      if maxContentInfo < int(testLevel):
+        maxContentInfo = int(testLevel)
+    if 'contentInfo' in isoTemplate[ii] and maxContentIndex < ii:
+      maxContentIndex = ii
+
+  ### Analyze DEM template
+  maxIndex = 0
+  for ii in range(len(demTemplate)):
+    if 'identificationInfo' in demTemplate[ii] and maxIndex < ii:
+      maxIndex = ii
+
+  ### Combine ISO and DEM attributes
+  mergedAttributes = []
+  for ii in range(maxIdentificationIndex+1):
+    mergedAttributes.append(isoAttributes[ii])
+  for ii in range(maxIndex+1):
+    mergedAttributes.append(demAttributes[ii])
+  for ii in range(maxIdentificationIndex+1, maxContentIndex+1):
+    mergedAttributes.append(isoAttributes[ii])
+  for ii in range(maxIndex+1, len(demAttributes)):
+    mergedAttributes.append(demAttributes[ii])
+  for ii in range(maxContentIndex+1, len(isoAttributes)):
+    mergedAttributes.append(isoAttributes[ii])
+
+  return mergedAttributes
+
+
+def iso_dictionary_structure(excelFile, demFile, metaTemplate, metaParams, 
+  metaValues):
 
   ### Read attributes and their values from Excel spreadsheet
-  (isoAttributes, _) = iso_attributes2lists(excelFile)
+  (isoAttributes, _, isoTemplate) = iso_attributes2lists(excelFile)
+  if demFile:
+    (demAttributes, _, demTemplate) = iso_attributes2lists(demFile)
+    isoAttributes = add_dem_attributes(isoAttributes, demAttributes[5:], 
+      isoTemplate, demTemplate[5:])
 
   ### Build dataframe with parameters
   dfParams = getParamsDataframe(metaParams)

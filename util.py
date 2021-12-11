@@ -324,13 +324,16 @@ def mergeDictionaryParams(oldDictList, levelParams, oldLevel, newLevel):
     getDictListParams(oldDictList, oldLevel, newLevel)
   params = list(dict.fromkeys(dictParams))
   params = [i for i, g in groupby(levelParams)]
-    
+
   for param in params:
     indices = [i for i, x in enumerate(dictParams) if x == param]
     listIndices = []
     for index in indices:
       listIndices.append(oldDictList[index]['list'])
-    maxIndex = max(listIndices)
+    if len(listIndices) > 0:
+      maxIndex = max(listIndices)
+    else:
+      maxIndex = 0
 
     ### list case
     if maxIndex > 0:
@@ -369,8 +372,12 @@ def mergeDictionaryParams(oldDictList, levelParams, oldLevel, newLevel):
 
     mergedDict = {}
     mergedDict['level'] = oldDict['level']
-    if oldDict['key'] in ['id','href','nilReason','type','uom'] and \
-      'acquisitionInformation' not in oldDict['path']:
+    if oldDict['key'] == 'type' and \
+      'acquisitionInformation' in oldDict['path']:
+      mergedDict['path'] = param
+      mergedDict['key'] = oldDict['key']
+    elif oldDict['key'] in ['id','href','nilReason','type','uom'] and \
+      'additionalAttribute' not in oldDict['path']:
       mergedDict['path'] = rreplace(param, '/','/@')
       mergedDict['key'] = '@' + oldDict['key']
     else:
