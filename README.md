@@ -74,7 +74,7 @@
 
 <h3>Generate ISO template file from Excel spreadsheet</h3>
 <pre>
-usage: generate_iso_template.py [-h] excelFile isoBase
+usage: generate_iso_template.py [-h] [-dem DEM] excelFile isoBase
 
 Generate ISO template file from Excel spreadsheet
 
@@ -84,11 +84,12 @@ positional arguments:
 
 optional arguments:
   -h, --help  show this help message and exit
+  -dem DEM    name of DEM template spreadsheet
 </pre>
 
 <h3>Generate ISO metadata file from Excel spreadsheet</h3>
 <pre>
-usage: generate_iso_metadata.py [-h] listFile excelFile isoBase
+usage: generate_iso_metadata.py [-h] [-dem DEM] listFile excelFile isoBase
 
 Generate ISO metadata file from Excel spreadsheet
 
@@ -99,11 +100,12 @@ positional arguments:
 
 optional arguments:
   -h, --help  show this help message and exit
+  -dem DEM    name of DEM template spreadsheet
 </pre>
 
 <h3>Convert ISO metadata from XML to JSON format</h3>
 <pre>
-usage: iso_metadata_xml2json.py [-h] excelFile xmlFile jsonFile
+usage: iso_metadata_xml2json.py [-h] [-dem DEM] excelFile xmlFile jsonFile
 
 Convert ISO metadata from XML to JSON format
 
@@ -114,7 +116,9 @@ positional arguments:
 
 optional arguments:
   -h, --help  show this help message and exit
+  -dem DEM    name of DEM template spreadsheet
 </pre>
 
 <h2>Author</h2>
 <p>Rudi Gens</p>
+
