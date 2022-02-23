@@ -89,18 +89,19 @@ optional arguments:
 
 <h3>Generate ISO metadata file from Excel spreadsheet</h3>
 <pre>
-usage: generate_iso_metadata.py [-h] [-dem DEM] listFile excelFile isoBase
+usage: generate_iso_metadata.py [-h] [-dem DEM] productType logFile excelFile isoBase
 
 Generate ISO metadata file from Excel spreadsheet
 
 positional arguments:
-  listFile    name of processing list file
-  excelFile   name of the Excel template spreadsheet
-  isoBase     basename of the ISO XML metadata file
+  productType  name of the product type
+  logFile      name of processing log file
+  excelFile    name of the Excel template spreadsheet
+  isoBase      basename of the ISO XML metadata file
 
 optional arguments:
-  -h, --help  show this help message and exit
-  -dem DEM    name of DEM template spreadsheet
+  -h, --help   show this help message and exit
+  -dem DEM     name of DEM template spreadsheet
 </pre>
 
 <h3>Convert ISO metadata from XML to JSON format</h3>
