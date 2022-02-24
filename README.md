@@ -67,6 +67,9 @@
 
 <h3>Writing metadata to file</h3>
 <p>There are two separate functions to save the metadata to a file format. <em>meta_xml_file</em> is the function that generates an ISO XML metadata file, while <em>meta_json_file</em> saves the metadata in JSON format.</p>
+
+<h3>Cleaning up metadata</h3>
+<p>There are two separate functions to clean up the metadata structures. <em>cleanXMLstructure</em> (for XML files) and <em>cleanJSONstructure</em> (for JSON files) is the function that removes metadata for product files (digital elevation model, incidence angle map, scattering area map) that are only optionally included.</p>
 <br />
 
 <h2 id="tools">Tools</h2>
@@ -103,6 +106,8 @@ optional arguments:
   -h, --help   show this help message and exit
   -dem DEM     name of DEM template spreadsheet
 </pre>
+
+<p>At the moment, I have only added one function <em>gammaRTClog2meta</em> that analyzes GAMMA RTC log files for metadata. The corresponding product type is 'GAMMA RTC'.</p>
 
 <h3>Convert ISO metadata from XML to JSON format</h3>
 <pre>
