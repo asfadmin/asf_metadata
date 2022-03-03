@@ -533,8 +533,7 @@ def meta_json_file(metaStructure, jsonFile):
 
   ### Write JSON file
   with open(jsonFile, 'w') as outF:
-    outF.write(json.dumps(metaStructure, indent=2))
-  outF.close()
+    json.dump(metaStructure, outF, indent=2)
 
 
 def meta_xml_file(metaStructure, xmlFile):
@@ -543,7 +542,6 @@ def meta_xml_file(metaStructure, xmlFile):
   with open(xmlFile, 'wb') as outF:
     outF.write(et.tostring(metaStructure, xml_declaration=True, encoding='utf-8',
       pretty_print=True))
-  outF.close()
 
 
 def generate_product_dictionary(productType, logFile):
