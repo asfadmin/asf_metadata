@@ -67,6 +67,9 @@
 
 <h3>Writing metadata to file</h3>
 <p>There are two separate functions to save the metadata to a file format. <em>meta_xml_file</em> is the function that generates an ISO XML metadata file, while <em>meta_json_file</em> saves the metadata in JSON format.</p>
+
+<h3>Cleaning up metadata</h3>
+<p>There are two separate functions to clean up the metadata structures. <em>cleanXMLstructure</em> (for XML files) and <em>cleanJSONstructure</em> (for JSON files) is the function that removes metadata for product files (digital elevation model, incidence angle map, scattering area map) that are only optionally included.</p>
 <br />
 
 <h2 id="tools">Tools</h2>
@@ -74,7 +77,7 @@
 
 <h3>Generate ISO template file from Excel spreadsheet</h3>
 <pre>
-usage: generate_iso_template.py [-h] excelFile isoBase
+usage: generate_iso_template.py [-h] [-dem DEM] excelFile isoBase
 
 Generate ISO template file from Excel spreadsheet
 
@@ -84,26 +87,31 @@ positional arguments:
 
 optional arguments:
   -h, --help  show this help message and exit
+  -dem DEM    name of DEM template spreadsheet
 </pre>
 
 <h3>Generate ISO metadata file from Excel spreadsheet</h3>
 <pre>
-usage: generate_iso_metadata.py [-h] listFile excelFile isoBase
+usage: generate_iso_metadata.py [-h] [-dem DEM] productType logFile excelFile isoBase
 
 Generate ISO metadata file from Excel spreadsheet
 
 positional arguments:
-  listFile    name of processing list file
-  excelFile   name of the Excel template spreadsheet
-  isoBase     basename of the ISO XML metadata file
+  productType  name of the product type
+  logFile      name of processing log file
+  excelFile    name of the Excel template spreadsheet
+  isoBase      basename of the ISO XML metadata file
 
 optional arguments:
-  -h, --help  show this help message and exit
+  -h, --help   show this help message and exit
+  -dem DEM     name of DEM template spreadsheet
 </pre>
+
+<p>At the moment, I have only added one function <em>gammaRTClog2meta</em> that analyzes GAMMA RTC log files for metadata. The corresponding product type is 'GAMMA RTC'.</p>
 
 <h3>Convert ISO metadata from XML to JSON format</h3>
 <pre>
-usage: iso_metadata_xml2json.py [-h] excelFile xmlFile jsonFile
+usage: iso_metadata_xml2json.py [-h] [-dem DEM] excelFile xmlFile jsonFile
 
 Convert ISO metadata from XML to JSON format
 
@@ -114,7 +122,9 @@ positional arguments:
 
 optional arguments:
   -h, --help  show this help message and exit
+  -dem DEM    name of DEM template spreadsheet
 </pre>
 
 <h2>Author</h2>
 <p>Rudi Gens</p>
+

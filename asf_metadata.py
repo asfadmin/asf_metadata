@@ -1,20 +1,51 @@
 #!/usr/bin/python3
 
-import os
-import sys
-from datetime import datetime, timedelta
 import lxml.etree as et
 from lxml import objectify
 import json
 import pandas as pd
 import numpy as np
-import configparser
 import collections
 import re
-from osgeo import gdal, osr
-from util import getValue, meta2dict, rreplace, uniqueList, \
+import sys
+from util import getValue, rreplace, uniqueList, \
   getParamsDataframe, params2dictList, upgradeDictionary2level, \
   mergeDictionaryParams, getLevelParamsList
+from sentinelMetadata import gammaRTClog2meta
+
+
+xsi = '{http://www.w3.org/2001/XMLSchema-instance}'
+gmd = '{http://www.isotc211.org/2005/gmd}'
+gco = '{http://www.isotc211.org/2005/gco}'
+xs = '{http://www.w3.org/2001/XMLSchema}'
+eos = '{http://earthdata.nasa.gov/schema/eos}'
+echo = '{http://www.echo.nasa.gov/ingest/schemas/operatations}'
+xlink = '{http://www.w3.org/1999/xlink}'
+gml = '{http://www.opengis.net/gml/3.2}'
+gmi = '{http://www.isotc211.org/2005/gmi}'
+gmx = '{http://www.isotc211.org/2005/gmx}'
+ns_xsi = {'xsi': 'http://www.w3.org/2001/XMLSchema-instance'}
+ns_gmd = {'gmd' : 'http://www.isotc211.org/2005/gmd'}
+ns_gco = {'gco' : 'http://www.isotc211.org/2005/gco'}
+ns_xs = {'xs' : 'http://www.isotc211.org/2005/gmx'}
+ns_eos = {'eos' : 'http://earthdata.nasa.gov/schema/eos'}
+ns_echo = {'echo' : 'http://www.echo.nasa.gov/ingest/schemas/operatations'}
+ns_xlink = {'xlink' : 'http://www.w3.org/1999/xlink'}
+ns_gml = {'gml' : 'http://www.opengis.net/gml/3.2'}
+ns_gmi = {'gmi' : 'http://www.isotc211.org/2005/gmi'}
+ns_gmx = {'gmx' : 'http://www.isotc211.org/2005/gmx'}
+ns = dict(
+  list(ns_xsi.items()) +
+  list(ns_gmd.items()) +
+  list(ns_gco.items()) +
+  list(ns_xs.items()) +
+  list(ns_eos.items()) +
+  list(ns_echo.items()) +
+  list(ns_xlink.items()) +
+  list(ns_gml.items()) +
+  list(ns_gmi.items()) +
+  list(ns_gmx.items())
+)
 
 
 def meta_project2epsg(metaDict):
@@ -29,7 +60,7 @@ def meta_project2epsg(metaDict):
   return epsg
 
 
-def update_template(template, listParams, listParamCounts):
+def update_template(template, listParams):
 
   count = len(template)
   for listParam in listParams:
@@ -86,12 +117,8 @@ def iso_template2lists(excelFile, workSheet):
           duplicates.append(isoTemplate[kk])
     listParams = [item for item, \
       count in collections.Counter(duplicates).items() if count > 0]
-    listParamCounts = {}
-    for param in [element for index, element in enumerate(duplicates,1) 
-      if element not in duplicates[index:]]:
-        listParamCounts[param] = duplicates.count(param)
     if len(listParams) > 0:
-      isoTemplate = update_template(isoTemplate, listParams, listParamCounts)
+      isoTemplate = update_template(isoTemplate, listParams)
 
   ### Read parameters out of template
   isoParams = []
@@ -108,14 +135,154 @@ def iso_template2lists(excelFile, workSheet):
   return (isoTemplate, isoParams, isoValues)
 
 
+def merge_iso_dem_template(isoTemplate, demTemplate):
+
+  ### Analyze ISO template
+  maxIdentificationInfo = 0
+  maxIdentificationIndex = 0
+  maxContentInfo = 0
+  maxContentIndex = 0
+  for ii in range(len(isoTemplate)):
+    testLevel = isoTemplate[ii][-2:-1]
+    if isoTemplate[ii][:-3].endswith('identificationInfo'):
+      if maxIdentificationInfo < int(testLevel):
+        maxIdentificationInfo = int(testLevel)
+    if 'identificationInfo' in isoTemplate[ii] and maxIdentificationIndex < ii:
+      maxIdentificationIndex = ii
+    if isoTemplate[ii][:-3].endswith('contentInfo'):
+      if maxContentInfo < int(testLevel):
+        maxContentInfo = int(testLevel)
+    if 'contentInfo' in isoTemplate[ii] and maxContentIndex < ii:
+      maxContentIndex = ii
+
+  ### Analyze DEM template
+  maxIndex = 0
+  for ii in range(len(demTemplate)):
+    if 'identificationInfo' in demTemplate[ii] and maxIndex < ii:
+      maxIndex = ii
+
+  ### Combine ISO and DEM templates
+  mergedTemplate = []
+  for ii in range(maxIdentificationIndex+1):
+    mergedTemplate.append(isoTemplate[ii])
+  originalString = 'identificationInfo[1]'
+  replaceString = ('identificationInfo[{0}]'.format(maxIdentificationInfo+1))
+  for ii in range(maxIndex+1):
+    if 'identificationInfo' in demTemplate[ii]:
+      demInfo = demTemplate[ii].replace(originalString, replaceString)
+      mergedTemplate.append(demInfo)
+  for ii in range(maxIdentificationIndex+1, maxContentIndex+1):
+    mergedTemplate.append(isoTemplate[ii])
+  originalString = 'contentInfo[1]'
+  replaceString = ('contentInfo[{0}]'.format(maxIdentificationInfo+1))
+  for ii in range(maxIndex+1, len(demTemplate)):
+    demInfo = demTemplate[ii].replace(originalString, replaceString)
+    mergedTemplate.append(demInfo)
+  for ii in range(maxContentIndex+1, len(isoTemplate)):
+    mergedTemplate.append(isoTemplate[ii])
+
+  return mergedTemplate
+
+
+def add_dem_lists(isoTemplate, isoParams, isoValues, 
+  demTemplate, demParams, demValues):
+
+  ### Analyze ISO template
+  maxIdentificationInfo = 0
+  maxIdentificationIndex = 0
+  maxContentInfo = 0
+  maxContentIndex = 0
+  for ii in range(len(isoTemplate)):
+    testLevel = isoTemplate[ii][-2:-1]
+    if isoTemplate[ii][:-3].endswith('identificationInfo'):
+      if maxIdentificationInfo < int(testLevel):
+        maxIdentificationInfo = int(testLevel)
+    if 'identificationInfo' in isoTemplate[ii] and maxIdentificationIndex < ii:
+      maxIdentificationIndex = ii
+    if isoTemplate[ii][:-3].endswith('contentInfo'):
+      if maxContentInfo < int(testLevel):
+        maxContentInfo = int(testLevel)
+    if 'contentInfo' in isoTemplate[ii] and maxContentIndex < ii:
+      maxContentIndex = ii
+
+  ### Analyze DEM template
+  maxIndex = 0
+  for ii in range(len(demTemplate)):
+    if 'identificationInfo' in demTemplate[ii] and maxIndex < ii:
+      maxIndex = ii
+
+  ### Combine ISO and DEM templates
+  mergedTemplate = []
+  for ii in range(maxIdentificationIndex+1):
+    mergedTemplate.append(isoTemplate[ii])
+  originalString = 'identificationInfo[1]'
+  replaceString = ('identificationInfo[{0}]'.format(maxIdentificationInfo+1))
+  for ii in range(maxIndex+1):
+    if 'identificationInfo' in demTemplate[ii]:
+      demInfo = demTemplate[ii].replace(originalString, replaceString)
+      mergedTemplate.append(demInfo)
+  for ii in range(maxIdentificationIndex+1, maxContentIndex+1):
+    mergedTemplate.append(isoTemplate[ii])
+  originalString = 'contentInfo[1]'
+  replaceString = ('contentInfo[{0}]'.format(maxIdentificationInfo+1))
+  for ii in range(maxIndex+1, len(demTemplate)):
+    demInfo = demTemplate[ii].replace(originalString, replaceString)
+    mergedTemplate.append(demInfo)
+  for ii in range(maxContentIndex+1, len(isoTemplate)):
+    mergedTemplate.append(isoTemplate[ii])
+
+  ### Analyze ISO params and values
+  maxIdentificationIndex = 0
+  maxContentIndex = 0
+  for ii in range(len(isoParams)):
+    if 'identificationInfo' in isoParams[ii] and maxIdentificationIndex < ii:
+      maxIdentificationIndex = ii
+    if 'contentInfo' in isoParams[ii] and maxContentIndex < ii:
+      maxContentIndex = ii
+
+  ### Analyze DEM params
+  maxIndex = 0
+  for ii in range(len(demParams)):
+    if 'identificationInfo' in demParams[ii] and maxIndex < ii:
+      maxIndex = ii
+
+  ### Combine ISO and DEM params and values
+  mergedParams = []
+  mergedValues = []
+  for ii in range(maxIdentificationIndex+1):
+    mergedParams.append(isoParams[ii])
+    mergedValues.append(isoValues[ii])
+  originalString = 'identificationInfo[1]'
+  replaceString = ('identificationInfo[{0}]'.format(maxIdentificationInfo+1))
+  for ii in range(maxIndex+1):
+    demInfo = demParams[ii].replace(originalString, replaceString)
+    mergedParams.append(demInfo)
+    mergedValues.append(demValues[ii])
+  for ii in range(maxIdentificationIndex+1, maxContentIndex+1):
+    mergedParams.append(isoParams[ii])
+    mergedValues.append(isoValues[ii])
+  originalString = 'contentInfo[1]'
+  replaceString = ('contentInfo[{0}]'.format(maxIdentificationInfo+1))
+  for ii in range(maxIndex+1, len(demParams)):
+    demInfo = demParams[ii].replace(originalString, replaceString)
+    mergedParams.append(demInfo)
+    mergedValues.append(demValues[ii])
+  for ii in range(maxContentIndex+1, len(isoParams)):
+    mergedParams.append(isoParams[ii])
+    mergedValues.append(isoValues[ii])
+
+  return (mergedTemplate, mergedParams, mergedValues)
+
+
 def iso_attributes2lists(excelFile):
 
   ### ISO metadata structure
   meta = pd.read_excel(excelFile, sheet_name='ISO Metadata Structure')
   isoAttributes = list(meta['Attribute'])
   isoAttributeValues = list(meta['AttributeValue'])
+  (isoTemplate, _, _) = iso_template2lists(excelFile, 'ISO Metadata Structure')
 
-  return (isoAttributes, isoAttributeValues)
+  return (isoAttributes, isoAttributeValues, isoTemplate)
 
 
 def iso_xml_structure(excelFile, isoTemplate, isoParams, isoValues, nsFlag):
@@ -259,10 +426,57 @@ def iso_xml_structure(excelFile, isoTemplate, isoParams, isoValues, nsFlag):
   return root
 
 
-def iso_dictionary_structure(excelFile, metaTemplate, metaParams, metaValues):
+def add_dem_attributes(isoAttributes, demAttributes, isoTemplate, demTemplate):
+
+  ### Analyze ISO template
+  maxIdentificationInfo = 0
+  maxIdentificationIndex = 0
+  maxContentInfo = 0
+  maxContentIndex = 0
+  for ii in range(len(isoTemplate)):
+    testLevel = isoTemplate[ii][-2:-1]
+    if isoTemplate[ii][:-3].endswith('identificationInfo'):
+      if maxIdentificationInfo < int(testLevel):
+        maxIdentificationInfo = int(testLevel)
+    if 'identificationInfo' in isoTemplate[ii] and maxIdentificationIndex < ii:
+      maxIdentificationIndex = ii
+    if isoTemplate[ii][:-3].endswith('contentInfo'):
+      if maxContentInfo < int(testLevel):
+        maxContentInfo = int(testLevel)
+    if 'contentInfo' in isoTemplate[ii] and maxContentIndex < ii:
+      maxContentIndex = ii
+
+  ### Analyze DEM template
+  maxIndex = 0
+  for ii in range(len(demTemplate)):
+    if 'identificationInfo' in demTemplate[ii] and maxIndex < ii:
+      maxIndex = ii
+
+  ### Combine ISO and DEM attributes
+  mergedAttributes = []
+  for ii in range(maxIdentificationIndex+1):
+    mergedAttributes.append(isoAttributes[ii])
+  for ii in range(maxIndex+1):
+    mergedAttributes.append(demAttributes[ii])
+  for ii in range(maxIdentificationIndex+1, maxContentIndex+1):
+    mergedAttributes.append(isoAttributes[ii])
+  for ii in range(maxIndex+1, len(demAttributes)):
+    mergedAttributes.append(demAttributes[ii])
+  for ii in range(maxContentIndex+1, len(isoAttributes)):
+    mergedAttributes.append(isoAttributes[ii])
+
+  return mergedAttributes
+
+
+def iso_dictionary_structure(excelFile, demFile, metaTemplate, metaParams, 
+  metaValues):
 
   ### Read attributes and their values from Excel spreadsheet
-  (isoAttributes, _) = iso_attributes2lists(excelFile)
+  (isoAttributes, _, isoTemplate) = iso_attributes2lists(excelFile)
+  if demFile:
+    (demAttributes, _, demTemplate) = iso_attributes2lists(demFile)
+    isoAttributes = add_dem_attributes(isoAttributes, demAttributes[5:], 
+      isoTemplate, demTemplate[5:])
 
   ### Build dataframe with parameters
   dfParams = getParamsDataframe(metaParams)
@@ -319,8 +533,7 @@ def meta_json_file(metaStructure, jsonFile):
 
   ### Write JSON file
   with open(jsonFile, 'w') as outF:
-    outF.write(json.dumps(metaStructure, indent=2))
-  outF.close()
+    json.dump(metaStructure, outF, indent=2)
 
 
 def meta_xml_file(metaStructure, xmlFile):
@@ -329,448 +542,12 @@ def meta_xml_file(metaStructure, xmlFile):
   with open(xmlFile, 'wb') as outF:
     outF.write(et.tostring(metaStructure, xml_declaration=True, encoding='utf-8',
       pretty_print=True))
-  outF.close()
 
 
-def get_latlon_extent(filename):
+def generate_product_dictionary(productType, logFile):
 
-  src = gdal.Open(filename)
-  ulx, xres, _, uly, _, yres  = src.GetGeoTransform()
-  lrx = ulx + (src.RasterXSize * xres)
-  lry = uly + (src.RasterYSize * yres)
-
-  source = osr.SpatialReference()
-  source.ImportFromWkt(src.GetProjection())
-  target = osr.SpatialReference()
-  target.ImportFromEPSG(4326)
-  transform = osr.CoordinateTransformation(source, target)
-
-  (lon1, lat1, _) = transform.TransformPoint(ulx, uly)
-  (lon2, lat2, _) = transform.TransformPoint(lrx, uly)
-  (lon3, lat3, _) = transform.TransformPoint(ulx, lry)
-  (lon4, lat4, _) = transform.TransformPoint(lrx, lry)
-
-  lat_min = min(lat1,lat2,lat3,lat4)
-  lat_max = max(lat1,lat2,lat3,lat4)
-  lon_min = min(lon1,lon2,lon3,lon4)
-  lon_max = max(lon1,lon2,lon3,lon4)
-
-  return lat_min, lat_max, lon_min, lon_max
-
-
-def gamma_rtc_metadata(config):
-	
-  timestamp = datetime.utcnow().isoformat() + 'Z'
-
-  ## Get relevant file names from processing list file
-  fileName = {}
-  fileName['granule'] = config['GAMMA RTC']['granule']
-  fileName['metadata'] = config['GAMMA RTC']['metadata']
-  fileName['oversampled dem file'] = \
-    config['GAMMA RTC']['oversampled dem file']
-  fileName['oversampled dem metadata'] = \
-    config['GAMMA RTC']['oversampled dem metadata']
-  fileName['original dem file'] = config['GAMMA RTC']['original dem file']
-  fileName['layover shadow mask'] = config['GAMMA RTC']['layover shadow mask']
-  fileName['layover shadow stats'] = \
-    config['GAMMA RTC']['layover shadow stats']
-  fileName['layover shadow stats'] = \
-    config['GAMMA RTC']['layover shadow stats']
-  fileName['incidence angle file'] = \
-    config['GAMMA RTC']['incidence angle file']
-  fileName['incidence angle metadata'] = \
-    config['GAMMA RTC']['incidence angle metadata']
-  if config.has_option('GAMMA RTC', 'input HH file') == True:
-    fileName['input HH file'] = config['GAMMA RTC']['input HH file']
-  if config.has_option('GAMMA RTC', 'input HV file') == True:
-    fileName['input HV file'] = config['GAMMA RTC']['input HV file']
-  if config.has_option('GAMMA RTC', 'input VH file') == True:
-    fileName['input VH file'] = config['GAMMA RTC']['input VH file']
-  if config.has_option('GAMMA RTC', 'input VV file') == True:
-    fileName['input VV file'] = config['GAMMA RTC']['input VV file']
-  if config.has_option('GAMMA RTC', 'terrain corrected HH metadata') == True:
-    fileName['terrain corrected HH metadata'] = \
-      config['GAMMA RTC']['terrain corrected HH metadata']
-  if config.has_option('GAMMA RTC', 'terrain corrected HV metadata') == True:
-    fileName['terrain corrected HV metadata'] = \
-      config['GAMMA RTC']['terrain corrected VH metadata']
-  if config.has_option('GAMMA RTC', 'terrain corrected VH metadata') == True:
-    fileName['terrain corrected VH metadata'] = \
-      config['GAMMA RTC']['terrain corrected VH metadata']
-  if config.has_option('GAMMA RTC', 'terrain corrected VV metadata') == True:
-    fileName['terrain corrected VV metadata'] = \
-      config['GAMMA RTC']['terrain corrected VV metadata']
-  if config.has_option('GAMMA RTC', 'terrain corrected HH file') == True:
-    fileName['terrain corrected HH file'] = \
-      config['GAMMA RTC']['terrain corrected HH file']
-  if config.has_option('GAMMA RTC', 'terrain corrected HV file') == True:
-    fileName['terrain corrected HV file'] = \
-      config['GAMMA RTC']['terrain corrected HV file']
-  if config.has_option('GAMMA RTC', 'terrain corrected VH file') == True:
-    fileName['terrain corrected VH file'] = \
-      config['GAMMA RTC']['terrain corrected VH file']
-  if config.has_option('GAMMA RTC', 'terrain corrected VV file') == True:
-    fileName['terrain corrected VV file'] = \
-      config['GAMMA RTC']['terrain corrected VV file']
-  fileName['initial processing log'] = \
-    config['GAMMA RTC']['initial processing log']
-  fileName['terrain correction log'] = \
-    config['GAMMA RTC']['terrain correction log']
-  fileName['main log'] = config['GAMMA RTC']['main log']
-  fileName['mk_geo_radcal_0 log'] = config['GAMMA RTC']['mk_geo_radcal_0 log']
-  fileName['mk_geo_radcal_1 log'] = config['GAMMA RTC']['mk_geo_radcal_1 log']
-  fileName['mk_geo_radcal_2 log'] = config['GAMMA RTC']['mk_geo_radcal_2 log']
-  fileName['mk_geo_radcal_3 log'] = config['GAMMA RTC']['mk_geo_radcal_3 log']
-  fileName['coreg_check log'] = config['GAMMA RTC']['coreg_check log']
-  fileName['mli.par file'] = config['GAMMA RTC']['mli.par file']
-  fileName['browse image'] = config['GAMMA RTC']['browse image']
-  fileName['kml overlay'] = config['GAMMA RTC']['kml overlay']
-  fileName['gamma version'] = config['GAMMA RTC']['gamma version']
-  fileName['hyp3_rtc version'] = config['GAMMA RTC']['hyp3_rtc version']
-  demSource = config['GAMMA RTC']['dem source']
-
-  ## Check file existence
-  if os.path.isfile(fileName['metadata']) == False:
-    print('Metadata file ({0}) is missing!'.format(fileName['metadata']))
-    sys.exit(1)
-  if os.path.isfile(fileName['oversampled dem file']) == False:
-    print('Oversampled digital elevation model ({0}) is missing!' \
-      .format(fileName['oversampled dem file']))
-  if os.path.isfile(fileName['original dem file']) == False:
-    print('Original digital elevation model ({0}) is missing!' \
-      .format(fileName['original dem file']))
-  if ('terrain corrected HH metadata' in fileName) and \
-    (os.path.isfile(fileName['terrain corrected HH metadata']) == False):
-    print('Metadata for terrain corrected file ({0}) is missing!' \
-      .format(fileName['terrain corrected HH metadata']))
-    sys.exit(1)
-  if ('terrain corrected HH file' in fileName) and \
-    (os.path.isfile(fileName['terrain corrected HH file']) == False):
-    print('Terrain corrected file ({0}) is missing!' \
-      .format(fileName['terrain corrected HH file']))
-    sys.exit(1)
-  if ('terrain corrected HV metadata' in fileName) and \
-    (os.path.isfile(fileName['terrain corrected HV metadata']) == False):
-    print('Metadata for terrain corrected file ({0}) is missing!' \
-      .format(fileName['terrain corrected HV metadata']))
-    sys.exit(1)
-  if ('terrain corrected HV file' in fileName) and \
-    (os.path.isfile(fileName['terrain corrected HV file']) == False):
-    print('Terrain corrected file ({0}) is missing!' \
-      .format(fileName['terrain corrected HV file']))
-    sys.exit(1)
-  if ('terrain corrected VH metadata' in fileName) and \
-    (os.path.isfile(fileName['terrain corrected VH metadata']) == False):
-    print('Metadata for terrain corrected file ({0}) is missing!' \
-      .format(fileName['terrain corrected VH metadata']))
-    sys.exit(1)
-  if ('terrain corrected VH file' in fileName) and \
-    (os.path.isfile(fileName['terrain corrected VH file']) == False):
-    print('Terrain corrected file ({0}) is missing!' \
-      .format(fileName['terrain corrected VH file']))
-    sys.exit(1)
-  if ('terrain corrected VV metadata' in fileName) and \
-    (os.path.isfile(fileName['terrain corrected VV metadata']) == False):
-    print('Metadata for terrain corrected file ({0}) is missing!' \
-      .format(fileName['terrain corrected VV metadata']))
-    sys.exit(1)
-  if ('terrain corrected VV file' in fileName) and \
-    (os.path.isfile(fileName['terrain corrected VV file']) == False):
-    print('Terrain corrected file ({0}) is missing!' \
-      .format(fileName['terrain corrected VV file']))
-    sys.exit(1)
-  if os.path.isfile(fileName['browse image']) == False:
-    print('Browse image file ({0}) is missing!' \
-      .format(fileName['browse image']))
-  if os.path.isfile(fileName['kml overlay']) == False:
-    print('KML overlay file ({0}) is missing!' \
-      .format(fileName['kml overlay']))
-
-  ## Determine the values for the ISO metadata
-  meta = {}
-  meta['ISO_RTC_outputFile'] = fileName['granule'] + '.tif'
-  meta['ISO_RTC_XML_filename'] = fileName['granule'] + '.iso.xml'
-  meta['ISO_RTC_metadataCreationTime'] = timestamp
-  meta['ISO_RTC_digitalElevationModel'] = \
-    os.path.basename(fileName['original dem file'])
-  meta['ISO_RTC_layoverShadowMask'] = \
-    os.path.basename(fileName['layover shadow mask'])
-  meta['ISO_RTC_incidenceAngleMap'] = \
-    os.path.basename(fileName['incidence angle file'])
-
-  if os.path.isfile(fileName['mli.par file']) == True:
-    print('Extracting information from {0} ...' \
-      .format(fileName['mli.par file']))
-    lines = [line.rstrip() for line in open(fileName['mli.par file'])]
-    for line in lines:
-      if ':' in line:
-        param = line.split(':')[0]
-        value = line.split(':')[1].lstrip()
-        if param == 'sensor':
-          if 'ERS1' in value:
-            platform = 'ERS-1'
-          elif 'ERS2' in value:
-            platform = 'ERS-2'
-          elif 'PALSAR' in value:
-            platform = 'ALOS'
-          elif 'S1A' in value:
-            platform = 'Sentinel-1A'
-          elif 'S1B' in value:
-            platform = 'Sentinel-1B'
-          else:
-            print('Could not identify sensor!')
-            sys.exit(1)
-        if param == 'date':
-          dateTimestamp = datetime.strptime(value, '%Y %m %d %H %M %S.%f')
-          dateStamp = datetime.combine(dateTimestamp.date(),
-            datetime.min.time())
-        if param == 'start_time':
-          startTime = dateStamp + timedelta(seconds=float(value.split()[0]))
-        if param == 'end_time':
-          endTime = dateStamp + timedelta(seconds=float(value.split()[0]))
-        if param == 'radar_frequency':
-          speedOfLight = 299792458.0
-          frequency = float(value.split()[0])
-          wavelength = speedOfLight / frequency
-        if param == 'range_looks':
-          rangeLooks = int(value)
-        if param == 'azimuth_looks':
-          azimuthLooks = int(value)
-        if param == 'range_pixel_spacing':
-          slantSpacing = float(value.split()[0])
-        if param == 'azimuth_pixel_spacing':
-          azimuthSpacing = float(value.split()[0])
-  else:
-    print('Could not find MLI parameter file ({0})!' \
-      .format(fileName['mli.par file']))
-    sys.exit(1)
-
-  if os.path.isfile(fileName['mk_geo_radcal_2 log']) == True:
-    print('Extracting information from {0} ...' \
-      .format(fileName['mk_geo_radcal_2 log']))
-    lines = [line.rstrip() for line in open(fileName['mk_geo_radcal_2 log'])]
-    for line in lines:
-      if ':' in line:
-        param = line.split(':')[0]
-        value = line.split(':',1)[1].lstrip()
-        if param == 'final range offset poly. coeff.':
-          rangeOffset = float(value.split()[0])
-        if param == 'final azimuth offset poly. coeff.':
-          azimuthOffset = float(value.split()[0])
-        if param == 'final solution':
-          patches = value.split()
-  else:
-    print('Could not find offset information ({0}) !' \
-      .format(fileName['mk_geo_radcal_2 log']))
-    sys.exit(1)
-
-  coregistrationPassed = -1
-  if os.path.isfile(fileName['coreg_check log']) == True:
-    lines = [line.rstrip() for line in open(fileName['coreg_check log'])]
-    for line in lines:
-      if 'passed coregistration' in line:
-        coregistrationPassed = True
-      if 'failed coregistration' in line:
-        coregistrationPassed = False
-    if coregistrationPassed == -1:
-      print('Could not determine if this granule passed coregistratioon!')
-      sys.exit(1)
-  else:
-    print('Could not find coregistration check log file ({0}) !' \
-      .format(fileName['coreg_check log']))
-
-  # Metadata - Input image
-  if os.path.isfile(fileName['metadata']) == True:
-    metaDict = meta2dict(fileName['metadata'])
-    if platform == 'ALOS':
-      if 'input HH file' in fileName:
-        originalFile = os.path.basename(fileName['input HH file'])
-      elif 'input VV file' in fileName:
-        originalFile = os.path.basename(fileName['input VV file'])
-      frame = int(metaDict['general']['frame'])
-    elif 'Sentinel' in platform:
-      originalFile = metaDict['general']['name'].replace('.iso.xml','')
-      orbit = int(metaDict['general']['name'][49:55])
-      frame = -1
-    else:
-      print('Unsupported platform: {0}'.format(platform))
-      sys.exit(1)
-
-    meta['ISO_RTC_inputGranule'] = originalFile
-    meta['ISO_RTC_mission'] = platform
-    if platform == 'ALOS':
-      meta['ISO_RTC_sensor'] = 'PALSAR'
-    else:
-      meta['ISO_RTC_sensor'] = 'SAR'
-    meta['ISO_RTC_lookDirection'] = 'RIGHT'
-    meta['ISO_RTC_wavelength'] = wavelength
-    meta['ISO_RTC_beamMode'] = metaDict['general']['mode']
-    if metaDict['general']['orbit_direction'] == 'A':
-      meta['ISO_RTC_orbitDirection'] = 'ASCENDING'
-    elif metaDict['general']['orbit_direction'] == 'D':
-      meta['ISO_RTC_orbitDirection'] = 'DESCENDING'
-    meta['ISO_RTC_absoluteOrbitNumber'] = orbit
-    if frame > 0:
-      meta['ISO_RTC_frame'] = frame
-    if metaDict['general']['orbit_direction'] == 'A':
-      meta['ISO_RTC_orbitPassDirection'] = 'ascending'
-    elif metaDict['general']['orbit_direction'] == 'D':
-      meta['ISO_RTC_orbitPassDirection'] = 'descending'
-    meta['ISO_RTC_startTime'] = startTime.isoformat() + 'Z'
-    meta['ISO_RTC_stopTime'] = endTime.isoformat() + 'Z'
-    meta['ISO_RTC_rangeLooks'] = rangeLooks
-    meta['ISO_RTC_azimuthLooks'] = azimuthLooks
-    meta['ISO_RTC_rangePixelSize'] = slantSpacing
-    meta['ISO_RTC_azimuthPixelSize'] = azimuthSpacing
-    metaDict = None
-  else:
-    print('Metadata file ({0}) does not exist !'.format(fileName['metadata']))
-    sys.exit(1)
-
-  # Metadata - terrain correction
-  if 'terrain corrected HH metadata' in fileName:
-    rtcFilename = os.path.basename(fileName['terrain corrected HH file'])
-    metaDict = meta2dict(fileName['terrain corrected HH metadata'])
-  elif 'terrain corrected VV metadata' in fileName:
-    rtcFilename = os.path.basename(fileName['terrain corrected VV file'])
-    metaDict = meta2dict(fileName['terrain corrected VV metadata'])
-  else:
-    print('Could not find metadata for terrain corrected product !')
-    sys.exit(1)
-
-  meta['ISO_RTC_terrainCorrectedImage'] = rtcFilename
-  meta['ISO_RTC_azimuthCount'] = metaDict['general']['sample_count']
-  meta['ISO_RTC_azimuthPixelSize'] = metaDict['general']['y_pixel_size']
-  meta['ISO_RTC_rangeCount'] = metaDict['general']['line_count']
-  meta['ISO_RTC_rangePixelSize'] = metaDict['general']['x_pixel_size']
-  meta['ISO_RTC_epsgCode'] = meta_project2epsg(metaDict)
-  metaDict = None
-
-  # Metadata - terrain correction
-  meta['ISO_RTC_GammaVersion'] = fileName['gamma version']
-  meta['ISO_RTC_productVersion'] = fileName['hyp3_rtc version']
-  meta['ISO_RTC_coregistrationPatches'] = int(patches[6])
-  meta['ISO_RTC_successfulPatches'] = int(patches[0])
-  meta['ISO_RTC_coregistrationSuccessFlag'] = coregistrationPassed
-  meta['ISO_RTC_coregistrationRangeOffset'] = rangeOffset
-  meta['ISO_RTC_coregistrationAzimuthOffset'] = azimuthOffset
-
-  # Browse
-  meta['ISO_RTC_browseImage'] = os.path.basename(fileName['browse image'])
-  meta['ISO_RTC_KMLoverlay'] = os.path.basename(fileName['kml overlay'])
-
-  # Extent
-  if 'terrain corrected HH file' in fileName:
-    (lon_min, lon_max, lat_min, lat_max) = \
-      get_latlon_extent(fileName['terrain corrected HH file'])
-  else:
-    (lon_min, lon_max, lat_min, lat_max) = \
-      get_latlon_extent(fileName['terrain corrected VV file'])
-  meta['ISO_RTC_westBoundLongitude'] = lon_min
-  meta['ISO_RTC_eastBoundLongitude'] = lon_max
-  meta['ISO_RTC_northBoundLatitude'] = lat_max
-  meta['ISO_RTC_southBoundLatitude'] = lat_min
-
-  # Statistics - only for the first full-pol RTC image
-  if 'terrain corrected HH file' in fileName:
-    raster = gdal.Open(fileName['terrain corrected HH file'])
-    band = raster.GetRasterBand(1)
-    stats = band.GetStatistics(False, True)
-    meta['ISO_RTC_minValue'] = stats[0]
-    meta['ISO_RTC_maxValue'] = stats[1]
-    meta['ISO_RTC_meanValue'] = stats[2]
-    meta['ISO_RTC_standardDeviation'] = stats[3]
-    meta['ISO_RTC_transmittedPolarization'] = 'horizontal'
-    meta['ISO_RTC_receivedPolarization'] = 'horizontal'
-  elif 'terrain corrected VV file' in fileName:
-    raster = gdal.Open(fileName['terrain corrected VV file'])
-    band = raster.GetRasterBand(1)
-    stats = band.GetStatistics(False, True)
-    meta['ISO_RTC_minValue'] = stats[0]
-    meta['ISO_RTC_maxValue'] = stats[1]
-    meta['ISO_RTC_meanValue'] = stats[2]
-    meta['ISO_RTC_standardDeviation'] = stats[3]
-    meta['ISO_RTC_transmittedPolarization'] = 'vertical'
-    meta['ISO_RTC_receivedPolarization'] = 'vertical'
-  raster = None
-
-  raster = gdal.Open(fileName['original dem file'])
-  band = raster.GetRasterBand(1)
-  stats = band.GetStatistics(False, True)
-  meta['ISO_RTC_DEM_minValue'] = stats[0]
-  meta['ISO_RTC_DEM_maxValue'] = stats[1]
-  meta['ISO_RTC_DEM_meanValue'] = stats[2]
-  meta['ISO_RTC_DEM_standardDeviation'] = stats[3]
-  raster = None
-  meta['ISO_RTC_DEM_type'] = demSource
-
-  raster = gdal.Open(fileName['layover shadow mask'])
-  pixelCount = raster.RasterXSize * raster.RasterYSize
-  raster = None
-  lines = [line.rstrip() for line in open(fileName['layover shadow stats'])]
-  for line in lines:
-    if '0-  7:' in line:
-      h = line.split(':')[1].split()
-    if '8- 15:' in line:
-      h += line.split(':')[1].split()
-    if '16- 23:' in line:
-      h += line.split(':')[1].split()
-    if '24- 31:' in line:
-      h += line.split(':')[1].split()
-  noLayoverShadow = 0.0
-  trueLayover = 0.0
-  layover = 0.0
-  trueShadow = 0.0
-  shadow = 0.0
-  pixelCount -= float(h[0])
-  for ii in range(len(h)):
-    if ii & 1:
-      noLayoverShadow += float(h[ii]) / pixelCount
-    if ii & 2:
-      trueLayover += float(h[ii]) / pixelCount
-    if ii & 4:
-      layover += float(h[ii]) / pixelCount
-    if ii & 8:
-      trueShadow += float(h[ii]) / pixelCount
-    if ii & 16:
-      shadow += float(h[ii]) / pixelCount
-  meta['ISO_RTC_noLayoverShadowPercentage'] = noLayoverShadow * 100.0
-  meta['ISO_RTC_trueLayoverPercentage'] = trueLayover * 100.0
-  meta['ISO_RTC_layoverPercentage'] = layover * 100.0
-  meta['ISO_RTC_trueShadowPercentage'] = trueShadow * 100.0
-  meta['ISO_RTC_shadowPercentage'] = shadow * 100.0
-
-  raster = gdal.Open(fileName['incidence angle file'])
-  band = raster.GetRasterBand(1)
-  stats = band.GetStatistics(False, True)
-  meta['ISO_RTC_incidenceMinValue'] = stats[0]
-  meta['ISO_RTC_incidenceMaxValue'] = stats[1]
-  meta['ISO_RTC_incidenceMeanValue'] = stats[2]
-  meta['ISO_RTC_incidenceStandardDeviation'] = stats[3]
-  raster = None
-
-  # Processing
-  lines = [line.rstrip() for line in open(fileName['mk_geo_radcal_0 log'])]
-  for line in lines:
-    if 'processing start:' in line:
-      processing_time = \
-        datetime.strptime(line.split(': ')[1].rsplit(' ',1)[0],
-        '%a %b %d %H:%M:%S %Y ')
-  meta['ISO_RTC_productCreationTime'] = processing_time.isoformat() + 'Z'
-
-  return meta
-
-
-def generate_product_dictionary(listFile):
-
-  ### Read information from processing list file
-  config = configparser.ConfigParser(allow_no_value=True)
-  config.read(listFile)
-  productType = config.sections()[0]
-
-  ### Product: GAMMA RTC
   if productType == 'GAMMA RTC':
-    meta = gamma_rtc_metadata(config)
+    meta = gammaRTClog2meta(logFile)
 
   return meta
 
@@ -817,13 +594,17 @@ def get_metadata_values(metaFile, params):
 
 def product_dictionary2values(values, prodDict):
 
+  dictKeys = list(prodDict.keys())
   prodValues = []
   for ii in range(len(values)):
-    if ('{# ISO' or '{# UMM') in str(values[ii]):
+    keys = []
+    for kk in range(len(dictKeys)):
+      if str(values[ii]).count(dictKeys[kk]) > 0:
+        keys.append(dictKeys[kk])
+    for key in keys:
       start = values[ii].index('{# ')
       stop = values[ii].index(' #}')
       parameter = values[ii][start:stop+3]
-      key = parameter[3:-3]
       values[ii] = \
         values[ii].replace(parameter, str(prodDict[key]))
       try:
@@ -874,3 +655,83 @@ def properties2values(template, properties):
       values.append(param)
 
   return values
+
+
+def cleanJSONstructure(isoStructure):
+
+  meta = \
+    isoStructure['DS_Series']['composedOf']['DS_DataSet']['has']['MI_Metadata']
+
+  identificationInfo = meta['identificationInfo']
+  newIdentification = []
+  for ii in range(len(identificationInfo)):
+    value = identificationInfo[ii]['MD_DataIdentification']['citation'] \
+      ['CI_Citation']['title']['FileName']
+    if not value.startswith('{# ISO'):
+      newIdentification.append(identificationInfo[ii])
+  meta['identificationInfo'] = newIdentification
+
+  contentInfo = meta['contentInfo']
+  newContent = []
+  for ii in range(len(contentInfo)):
+    miBand = contentInfo[ii]['MD_CoverageDescription']['dimension']['MI_Band']
+    if 'maxValue' in miBand:
+      value = miBand['maxValue']['Real']
+    elif 'otherPropertyType' in miBand:
+      value = miBand['otherProperty']['Record']['additionalAttributes'] \
+        ['EOS_AdditionalAttributes']['additionalAttribute'][0] \
+        ['EOS_AdditionalAttribute']['value']['CharacterString']
+    if type(value) == float:
+      newContent.append(contentInfo[ii])
+  meta['contentInfo'] = newContent
+
+  return isoStructure
+
+
+def cleanXMLstructure(isoFile):
+
+  parser = et.XMLParser(remove_blank_text=True)
+  doc = et.parse(isoFile, parser)
+  meta = doc.xpath('/gmd:DS_Series/gmd:composedOf/gmd:DS_DataSet' \
+    '/gmd:has/gmi:MI_Metadata', namespaces=ns)[0]
+  identificationInfoCount = 0
+  contentInfoCount = 0
+  remove = []
+  for ii in range(len(meta)):
+    if 'identificationInfo' in meta[ii].tag:
+      fileName = doc.xpath('/gmd:DS_Series/gmd:composedOf/gmd:DS_DataSet' \
+        '/gmd:has/gmi:MI_Metadata/gmd:identificationInfo[{0}]' \
+        '/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:title' \
+        '/gmx:FileName'.format(identificationInfoCount+1), 
+        namespaces=ns)[0].text
+      if fileName.startswith('{# ISO'):
+        remove.append(ii)
+      identificationInfoCount += 1
+    elif 'contentInfo' in meta[ii].tag:
+      miBand = doc.xpath('/gmd:DS_Series/gmd:composedOf/gmd:DS_DataSet' \
+        '/gmd:has/gmi:MI_Metadata/gmd:contentInfo[{0}]' \
+        '/gmd:MD_CoverageDescription/gmd:dimension/gmi:MI_Band' \
+        .format(contentInfoCount+1), namespaces=ns)[0]
+      if 'maxValue' in miBand[0].tag:
+        value = doc.xpath('/gmd:DS_Series/gmd:composedOf/gmd:DS_DataSet' \
+        '/gmd:has/gmi:MI_Metadata/gmd:contentInfo[{0}]' \
+        '/gmd:MD_CoverageDescription/gmd:dimension/gmi:MI_Band/gmd:maxValue' \
+        '/gco:Real'.format(contentInfoCount+1), namespaces=ns)[0].text
+      elif 'otherPropertyType' in miBand[0].tag:
+        value = doc.xpath('/gmd:DS_Series/gmd:composedOf/gmd:DS_DataSet' \
+        '/gmd:has/gmi:MI_Metadata/gmd:contentInfo[{0}]' \
+        '/gmd:MD_CoverageDescription/gmd:dimension/gmi:MI_Band' \
+        '/eos:otherProperty/gco:Record/eos:additionalAttributes' \
+        '/eos:EOS_AdditionalAttributes/eos:additionalAttribute[1]' \
+        '/eos:EOS_AdditionalAttribute/eos:value/eos:CharacterString' \
+        .format(contentInfoCount+1), namespaces=ns)[0].text
+      try:
+        float(value)
+      except ValueError:
+        remove.append(ii)
+      contentInfoCount += 1
+ 
+  for ii in range(len(remove)-1,-1,-1):
+    del meta[remove[ii]]
+  
+  return doc
