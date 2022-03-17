@@ -8,10 +8,10 @@ import numpy as np
 import collections
 import re
 import sys
-from util import getValue, rreplace, uniqueList, \
+from metadata.util import getValue, rreplace, uniqueList, \
   getParamsDataframe, params2dictList, upgradeDictionary2level, \
   mergeDictionaryParams, getLevelParamsList
-from sentinelMetadata import gammaRTClog2meta
+from metadata.sentinelMetadata import gammaRTClog2meta
 
 
 xsi = '{http://www.w3.org/2001/XMLSchema-instance}'
