@@ -59,11 +59,14 @@ if __name__ == '__main__':
     description='Generate ISO metadata file from Excel spreadsheet',
     formatter_class=RawTextHelpFormatter)
   parser.add_argument('productType', help='name of the product type')
-  parser.add_argument('dataSource', help='name of the data source')
-  parser.add_argument('metaFile', help='name of the input metadata file')
+  parser.add_argument('metaFile', help='file path of product metadata ' \
+    'such as a "manifest.safe" or leader file')
   parser.add_argument('logFile', help='name of RTC processing log file')
   parser.add_argument('excelFile', 
     help='name of the Excel template spreadsheet')
+  parser.add_argument('-dataSource', default='sentinel', 
+    help='name of the data source (default: sentinel)\n' \
+      'choices: ["sentinel"]')
   parser.add_argument('-dem', default=None,
     help='name of DEM template spreadsheet')
   parser.add_argument('isoBase', help='basename of the ISO XML metadata file')
