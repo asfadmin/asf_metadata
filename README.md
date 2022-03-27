@@ -127,7 +127,7 @@ optional arguments:
   -dem DEM    name of DEM template spreadsheet
 </pre>
 
-<h2 id="iso-tools">Sentinel-1 burst metadata</h2>
+<h2 id="burst-metadata">Sentinel-1 burst metadata</h2>
 
 <h3>Reading from a remote zip file</h3>
 
