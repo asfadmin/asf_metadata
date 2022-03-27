@@ -8,7 +8,7 @@
 <li><a href="#excel-spreadsheet">Excel spreadsheet</a></li>
 <li><a href="#iso-functions">ISO metdata functions</a></li>
 <li><a href="#iso-tools">ISO metadata tools</a></li>
-<li><a href="#burst_metadata">Sentinel-1 burst metadata</a></li>
+<li><a href="#burst-metadata">Sentinel-1 burst metadata</a></li>
 </ul>
 <br />
 
