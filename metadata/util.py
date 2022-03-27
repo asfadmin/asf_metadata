@@ -3,6 +3,8 @@
 from itertools import groupby
 from operator import itemgetter
 import pandas as pd
+import configparser
+from sqlalchemy import create_engine
 
 
 def splitElement(k, v, out):
@@ -389,3 +391,17 @@ def mergeDictionaryParams(oldDictList, levelParams, oldLevel, newLevel):
     mergedDictList.append(mergedDict)
 
   return mergedDictList
+
+
+def create_postgis_engine(configFile):
+
+  config = configparser.ConfigParser()
+  config.read(configFile)
+  connection_string = \
+    "postgresql://" + config.get('postgres', 'user') + \
+    ":'" + config.get('postgres', 'pass') + "'" + \
+    "@" + config.get('postgres', 'host') + ":5432" + \
+    "/" + config.get('postgres', 'db')
+  engine = create_engine(connection_string)
+
+  return engine
