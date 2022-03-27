@@ -728,7 +728,8 @@ def gammaRTClog2meta(dataSource, metaFile, logFile):
   )
 
   ### Determine parent directory of log file
-  parentDir = os.path.dirname(os.path.abspath(os.path.basename(metaFile)))
+  parentDir = os.path.dirname(os.path.abspath(metaFile))
+  outputDir = os.path.dirname(os.path.abspath(logFile))
 
   ### Read information from log file
   fp = open(logFile, 'r')
@@ -743,7 +744,7 @@ def gammaRTClog2meta(dataSource, metaFile, logFile):
   meta['ISO_RTC_radiometry'] = parseLine(lines[3], 'value')
   meta['ISO_RTC_scale'] = parseLine(lines[4], 'value')
   outputBase = parseLine(lines[12], 'value')
-  outputDir = os.path.join(parentDir, outputBase)
+  #outputDir = os.path.join(parentDir, outputBase)
   meta['ISO_RTC_DEM_type'] = parseLine(lines[13], 'value').upper()
   for line in lines:
     value = parseLine(line, 'value')
@@ -759,9 +760,7 @@ def gammaRTClog2meta(dataSource, metaFile, logFile):
   if dataSource == 'SENTINEL':
 
     ### Extract more metadata from manifest file
-    manifestFile = os.path.join(parentDir, 
-      meta['ISO_RTC_inputGranule'] + '.SAFE', 'manifest.safe')
-    manifest = readManifestFile(manifestFile)
+    manifest = readManifestFile(metaFile)
     doc = et.fromstring(manifest['metadataSection'])
     meta['ISO_RTC_startTime'] = doc.xpath('/metadataSection/metadataObject' \
       '[@ID="acquisitionPeriod"]/metadataWrap/xmlData/' \
@@ -772,7 +771,7 @@ def gammaRTClog2meta(dataSource, metaFile, logFile):
     
     ### Extract more metadata from annotation file
     annotationFile = glob.glob('{0}'.format(os.path.join(parentDir, 
-      meta['ISO_RTC_inputGranule'] + '.SAFE', 'annotation', '*.xml')))[0]
+      'annotation', '*.xml')))[0]
     annotation = readAnnotationFile(annotationFile)
     doc = et.fromstring(annotation['adsHeader'])
     meta['ISO_RTC_mission'] = \
@@ -798,8 +797,7 @@ def gammaRTClog2meta(dataSource, metaFile, logFile):
       polString = 'vertical'
 
   ### Extract Hyp3 version out of README file
-  readmeFile = \
-    os.path.join(parentDir, outputBase, outputBase + '.README.md.txt')
+  readmeFile = os.path.join(outputDir, outputBase + '.README.md.txt')
   with open(readmeFile, 'r') as fp:
     lines = fp.readlines()
   for line in lines:
