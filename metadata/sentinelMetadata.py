@@ -11,7 +11,8 @@ import numpy as np
 import scipy.interpolate
 from shapely import wkt
 import requests
-import remotezip
+import json
+import xmltodict
 
 
 def readZipFile(inFile):
@@ -60,24 +61,10 @@ def get_latlon_extent(filename):
   return lat_min, lat_max, lon_min, lon_max
 
 
-def extractMetadataFromZip(zipFile):
+def extractMetadata(safeDir, zf=None):
 
-  ### Set up cookie jar
-  loginURL = 'https://urs.earthdata.nasa.gov/oauth/authorize?client_id=' \
-    'BO_n7nTIlMljdvU6kRRB3g&response_type=code&redirect_uri=' \
-    'https://auth.asf.alaska.edu/login&app_type=401'
-  jar = requests.cookies.RequestsCookieJar()
-  username = os.getenv('EDL_USER')
-  password = os.getenv('EDL_PASS')
-  login = requests.get(loginURL, auth=(username, password))
-  for r in login.history:
-    jar.update(r.cookies.get_dict())
-
-  zf = remotezip.RemoteZip(zipFile, cookies=jar)
-  nameList = zf.namelist()
-  safe = nameList[0]
-  manifest = readManifestFile(os.path.join(safe, 'manifest.safe'), zf)
-  sentinelFiles = getSentinelFiles(safe, manifest)
+  manifest = readManifestFile(os.path.join(safeDir, 'manifest.safe'), zf)
+  sentinelFiles = getSentinelFiles(safeDir, manifest)
   for sentinelFile in sentinelFiles:
     if sentinelFile['type'] == 'annotation':
       if sentinelFile['polarization'] == 'VV' or \
@@ -88,9 +75,8 @@ def extractMetadataFromZip(zipFile):
           annotation_iw2 = readAnnotationFile(sentinelFile['name'], zf)
         elif sentinelFile['swath'] == 'IW3':
           annotation_iw3 = readAnnotationFile(sentinelFile['name'], zf)
-  zf.close()
 
-  return (safe, manifest, annotation_iw1, annotation_iw2, annotation_iw3)
+  return (manifest, annotation_iw1, annotation_iw2, annotation_iw3)
 
 
 def readManifestFile(manifestFile, zf=None):
@@ -210,7 +196,6 @@ def annotation2burstLocation(meta, burstMap, granuleInfo):
   ### Initialize geodataframe and define data types
   df = pd.DataFrame()
 
-  #(latSpline, lonSpline, heightSpline) = annotation2spline(annotationFile)
   (latSpline, lonSpline, heightSpline) = annotation2spline(meta)
 
   ### Extract metadata
@@ -340,14 +325,19 @@ def annotation2burstLocation(meta, burstMap, granuleInfo):
       int(abs(burstTimePeriod - acqTimePeriod) / azimuthTimeInterval + 0.5)
     lats = np.zeros(4, dtype=float) 
     lons = np.zeros(4, dtype=float)
+    heights = np.zeros(4, dtype=float)
     lats[0] = latSpline(firstLine, 0)[0][0]
     lons[0] = lonSpline(firstLine, 0)[0][0]
+    heights[0] = heightSpline(firstLine, 0)[0][0]
     lats[1] = latSpline(firstLine, maxPixel)[0][0]
     lons[1] = lonSpline(firstLine, maxPixel)[0][0]
+    heights[1] = heightSpline(firstLine, maxPixel)[0][0]
     lats[2] = latSpline(lastLine, maxPixel)[0][0]
     lons[2] = lonSpline(lastLine, maxPixel)[0][0]
+    heights[2] = heightSpline(lastLine, maxPixel)[0][0]
     lats[3] = latSpline(lastLine, 0)[0][0]
     lons[3] = lonSpline(lastLine, 0)[0][0]
+    heights[3] = heightSpline(lastLine, 0)[0][0]
     centerLine = firstLine + (lastLine - firstLine) / 2.0
     terrainHeight = heightSpline(centerLine, centerPixel)[0][0]
 
@@ -489,14 +479,19 @@ def annotation2burstLocation(meta, burstMap, granuleInfo):
 
     values.at[0,'pointLongitude_1'] = float(lons[0])
     values.at[0,'pointLatitude_1'] = float(lats[0])
+    values.at[0,'pointHeight_1'] = float(heights[0])
     values.at[0,'pointLongitude_2'] = float(lons[1])
     values.at[0,'pointLatitude_2'] = float(lats[1])
+    values.at[0,'pointHeight_2'] = float(heights[1])
     values.at[0,'pointLongitude_3'] = float(lons[2])
     values.at[0,'pointLatitude_3'] = float(lats[2])
+    values.at[0,'pointHeight_3'] = float(heights[2])
     values.at[0,'pointLongitude_4'] = float(lons[3])
     values.at[0,'pointLatitude_4'] = float(lats[3])
+    values.at[0,'pointHeight_4'] = float(heights[3])
     values.at[0,'pointLongitude_5'] = float(lons[0])
     values.at[0,'pointLatitude_5'] = float(lats[0])
+    values.at[0,'pointHeight_5'] = float(heights[0])
     values.at[0,'geometry'] = wkt.loads(polygon.ExportToWkt())
 
     df = pd.concat([df, values], ignore_index=True)
@@ -519,7 +514,7 @@ def getBurstID(burstMap, track, swath, anxTime):
   return burstID
 
 
-def getSentinelBursts(zipFile, burstMapFile):
+def getSentinelBursts(safeDir, burstMapFile, zf=None, urlStr=None):
 
   ### Read burst map
   print('Reading burst map file ({0}) ...' \
@@ -534,9 +529,13 @@ def getSentinelBursts(zipFile, burstMapFile):
     list(ns_s1.items())
   )
 
-  (safeFile, manifest, annotation_iw1, annotation_iw2, annotation_iw3) = \
+  '''
+  (safeDir, manifest, annotation_iw1, annotation_iw2, annotation_iw3) = \
     extractMetadataFromZip(zipFile)
-  print('Extracting information for granule ({0}) ...'.format(safeFile[:-6]))
+  '''
+  (manifest, annotation_iw1, annotation_iw2, annotation_iw3) = \
+    extractMetadata(safeDir, zf)
+  print('Extracting information for granule ({0}) ...'.format(safeDir[:-6]))
 
   doc = et.fromstring(manifest['metadataSection'])
   metaObjectCount = len(doc.xpath('/metadataSection/metadataObject/@ID'))
@@ -572,6 +571,16 @@ def getSentinelBursts(zipFile, burstMapFile):
         's1:ascendingNodeTime'.format(ii+1), namespaces=ns)
       ascendingNodeTime = param[0].text
 
+  if not urlStr:
+    ### Determine URL (if needed)
+    url = 'https://api.daac.asf.alaska.edu/services/search/param?granule_list='
+    url += safeDir[:-6]
+    #print(url)
+    data = requests.get(url).content
+    data = json.dumps(xmltodict.parse(data.decode()))
+    string = json.loads(data)
+    urlStr = string['metalink']['files']['file'][1]['resources']['url']['#text']
+
   ### Split data files into bursts
   granuleInfo = {}
   granuleInfo['platform'] = platform
@@ -580,8 +589,8 @@ def getSentinelBursts(zipFile, burstMapFile):
   granuleInfo['trackNumber'] = relativeOrbitNumber
   granuleInfo['passDirection'] = orbitDirection
   granuleInfo['ascendingNodeTime'] = ascendingNodeTime
-  granuleInfo['granule'] = safeFile[:-6]
-  granuleInfo['urlOfFrame'] = zipFile
+  granuleInfo['granule'] = safeDir[:-6]
+  granuleInfo['urlOfFrame'] = urlStr
   granuleInfo['ipf'] = ipf
 
   #df = initializeGeoDataFrame()
@@ -696,11 +705,8 @@ def getSentinelFiles(safe, meta):
     file = {}
     href = doc.xpath('/dataObjectSection/dataObject[{0}]/byteStream/' \
       'fileLocation/@href'.format(ii+1))[0]
-    #print('href: {0}'.format(href))
     fileParts = os.path.basename(href).split('-')
-    #file['name'] = os.path.abspath(href)
     file['name'] = os.path.join(safe, href[2:])
-    #print(file['name'])
     file['ID'] = doc.xpath('/dataObjectSection/dataObject[{0}]/@ID' \
       .format(ii+1))[0]
     if file['ID'] == 'mapoverlay':
@@ -723,6 +729,12 @@ def getSentinelFiles(safe, meta):
       file['stopTime'] = fileParts[6]
     elif file['ID'].startswith('noise'):
       file['type'] = 'noise'
+      file['swath'] = fileParts[2].upper()
+      file['polarization'] = fileParts[4].upper()
+      file['startTime'] = fileParts[5]
+      file['stopTime'] = fileParts[6]
+    elif file['ID'].startswith('rfi'):
+      file['type'] = 'rfi'
       file['swath'] = fileParts[2].upper()
       file['polarization'] = fileParts[4].upper()
       file['startTime'] = fileParts[5]

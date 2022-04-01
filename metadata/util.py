@@ -2,9 +2,12 @@
 
 from itertools import groupby
 from operator import itemgetter
+import os
 import pandas as pd
 import configparser
 from sqlalchemy import create_engine
+import requests
+import remotezip
 
 
 def splitElement(k, v, out):
@@ -405,3 +408,21 @@ def create_postgis_engine(configFile):
   engine = create_engine(connection_string)
 
   return engine
+
+
+def accessRemoteZip(zipFile):
+
+  ### Set up cookie jar
+  loginURL = 'https://urs.earthdata.nasa.gov/oauth/authorize?client_id=' \
+    'BO_n7nTIlMljdvU6kRRB3g&response_type=code&redirect_uri=' \
+    'https://auth.asf.alaska.edu/login&app_type=401'
+  jar = requests.cookies.RequestsCookieJar()
+  username = os.getenv('EDL_USER')
+  password = os.getenv('EDL_PASS')
+  login = requests.get(loginURL, auth=(username, password))
+  for r in login.history:
+    jar.update(r.cookies.get_dict())
+
+  zf = remotezip.RemoteZip(zipFile, cookies=jar)
+
+  return zf
