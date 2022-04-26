@@ -13,7 +13,7 @@
 
 <h2 id="iso-template">ISO template</h2>
 <p>ISO metadata templates can be best maintained in a more user-friendly environment. I have settled for an Excel spreadsheet to achieve that.<p>
-<img src="./images/iso_metadata.png" alt="ISO metadata" width="500">
+<img src="./asf_metadata/images/iso_metadata.png" alt="ISO metadata" width="500">
 <p>The template mechanism has three different flows. All use an Excel spreadsheet to define the structure of the ISO metadata. </p>
 
 <h3>ISO metadata template generation</h3>
@@ -31,16 +31,16 @@
 <p>The Excel spreadsheet has a number of worksheets.</p>
 
 <h3>ISO metadata structure</h3>
-<img src="./images/iso_metadata_structure.png" alt="ISO metadata structure worksheet" width="700">
+<img src="./asf_metadata/images/iso_metadata_structure.png" alt="ISO metadata structure worksheet" width="700">
 <p>This worksheet provides the relevant parts of the ISO metadata, most importantly its structure and the namespaces used within that structure.</p>
 
 <h3>Namespaces</h3>
 <p>One of the biggest nuisances about ISO XML metadata is the namespaces.</p>
 
-<img src="./images/namespaces_lut.png" alt="Namespaces look-up-table" width="300">
+<img src="./asf_metadata/images/namespaces_lut.png" alt="Namespaces look-up-table" width="300">
 <p>This worksheet links each parameter to its respective namespace. </p>
 
-<img src="./images/namespaces_url.png" alt="Namespaces URLs" width="400">
+<img src="./asf_metadata/images/namespaces_url.png" alt="Namespaces URLs" width="400">
 <p>This worksheet defines the URLs for the individual namespaces needed in the XML declarations.</p>
 <br />
 
