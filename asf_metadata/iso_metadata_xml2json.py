@@ -3,7 +3,7 @@
 import argparse
 from argparse import RawTextHelpFormatter
 import sys
-from metadata.asf_metadata import iso_template2lists, add_dem_lists, \
+from asf_metadata.metadata.asf_metadata import iso_template2lists, add_dem_lists, \
   iso_dictionary_structure, get_metadata_values, meta_json_file
 
 
