@@ -1,4 +1,6 @@
-<h1>asf-metadata</h1>
+[![PyPI version](https://img.shields.io/pypi/v/asf_metadata.svg)](https://pypi.python.org/pypi/asf_metadata/)
+
+<h1>ASF Metadata</h1>
 
 <p>This repo contains all the Python 3.8 scripts related to manage ASF metadata. These are currently mostly dealing with ISO metadata. In future, these will likely extended to UMM and CMR functionality.</p>
 
