@@ -25,7 +25,7 @@ def xml2string(in_file, zip_handle=None):
     else:
         string = zip_handle.read(in_file)
 
-    return string.decode()
+    return string
 
 
 def get_latlon_extent(filename):
@@ -141,12 +141,12 @@ def annotation2spline(meta):
     ### Determine line/pixel indices for spline calculation
     lines = []
     pixels = []
-    for point in range(1,number_of_points+1):
+    for point in range(number_of_points):
         xml = ('/geolocationGrid/geolocationGridPointList/' \
-            'geolocationGridPoint[{0}]/line'.format(point))
+            'geolocationGridPoint[{0}]/line'.format(point+1))
         line = int(doc_grid.xpath(xml)[0].text)
         xml = ('/geolocationGrid/geolocationGridPointList/' \
-            'geolocationGridPoint[{0}]/pixel'.format(point))
+            'geolocationGridPoint[{0}]/pixel'.format(point+1))
         pixel = int(doc_grid.xpath(xml)[0].text)
         if line == 0:
             pixels.append(pixel)
@@ -161,21 +161,21 @@ def annotation2spline(meta):
     lat_grid = np.zeros((line_count, pixel_count), dtype=float)
     lon_grid = np.zeros((line_count, pixel_count), dtype=float)
     height_grid = np.zeros((line_count, pixel_count), dtype=float)
-    for point in range(1,number_of_points+1):
+    for point in range(number_of_points):
         xml = ('/geolocationGrid/geolocationGridPointList/' \
-        'geolocationGridPoint[{0}]/line'.format(point))
+        'geolocationGridPoint[{0}]/line'.format(point+1))
         line = int(doc_grid.xpath(xml)[0].text)
         xml = ('/geolocationGrid/geolocationGridPointList/' \
-        'geolocationGridPoint[{0}]/pixel'.format(point))
+        'geolocationGridPoint[{0}]/pixel'.format(point+1))
         pixel = int(doc_grid.xpath(xml)[0].text)
         xml = ('/geolocationGrid/geolocationGridPointList/' \
-        'geolocationGridPoint[{0}]/latitude'.format(point))
+        'geolocationGridPoint[{0}]/latitude'.format(point+1))
         lat = float(doc_grid.xpath(xml)[0].text)
         xml = ('/geolocationGrid/geolocationGridPointList/' \
-        'geolocationGridPoint[{0}+1]/longitude'.format(point))
+        'geolocationGridPoint[{0}]/longitude'.format(point+1))
         lon = float(doc_grid.xpath(xml)[0].text)
         xml = ('/geolocationGrid/geolocationGridPointList/' \
-        'geolocationGridPoint[{0}+1]/height'.format(point))
+        'geolocationGridPoint[{0}]/height'.format(point+1))
         height = float(doc_grid.xpath(xml)[0].text)
         index_line = lines.index(line)
         index_pixel = pixels.index(pixel)
@@ -223,21 +223,21 @@ def annotation2burst_location(meta, burst_map, granule_info):
     azimuth_fm_rate_list_count = int(doc_general.xpath('/generalAnnotation/' \
         'azimuthFmRateList/@count')[0])
     fm_rates = []
-    for rate in range(1,azimuth_fm_rate_list_count+1):
+    for rate in range(azimuth_fm_rate_list_count):
         xml = ('/generalAnnotation/azimuthFmRateList/azimuthFmRate[{0}]/' \
-            'azimuthTime'.format(rate))
+            'azimuthTime'.format(rate+1))
         ref_time = datetime.fromisoformat(doc_general.xpath(xml)[0].text)
         xml = ('/generalAnnotation/azimuthFmRateList/azimuthFmRate[{0}]/' \
-            'azimuth_fm_rate_polynomial'.format(rate))
+            'azimuthFmRatePolynomial'.format(rate+1))
         poly_coeffs = \
             list(map(float, doc_general.xpath(xml)[0].text.split(' ')))
         fm_rates.append((ref_time, poly_coeffs))
 
     doc_image = et.fromstring(meta['imageAnnotation'])
     azimuth_time_interval = float(doc_image.xpath('/imageAnnotation/' \
-        'imageInformation/azimuth_time_interval')[0].text)
+        'imageInformation/azimuthTimeInterval')[0].text)
     range_pixel_spacing = float(doc_image.xpath('/imageAnnotation/' \
-        'imageInformation/range_pixel_spacing')[0].text)
+        'imageInformation/rangePixelSpacing')[0].text)
     range_window_type = doc_image.xpath('/imageAnnotation/' \
         'processingInformation/swathProcParamsList/swathProcParams/' \
         'rangeProcessing/windowType')[0].text
@@ -280,15 +280,16 @@ def annotation2burst_location(meta, burst_map, granule_info):
     lines = []
     pixels = []
     slant_ranges = []
-    for point in range(1,number_of_points+1):
-        xml = ('/geolocationGrid/geolocationGridPointList' \
-            'geolocationGridPoint[{0}]/line'.format(point))
+    for point in range(number_of_points):
+        xml = ('/geolocationGrid/geolocationGridPointList/' \
+            'geolocationGridPoint[{0}]/line'.format(point+1))
+        #print(doc_grid.xpath(xml))
         line = int(doc_grid.xpath(xml)[0].text)
         xml = ('/geolocationGrid/geolocationGridPointList/' \
-            'geolocationGridPoint[{0}]/pixel'.format(point))
+            'geolocationGridPoint[{0}]/pixel'.format(point+1))
         pixel = int(doc_grid.xpath(xml)[0].text)
         xml = ('/geolocationGrid/geolocationGridPointList/' \
-            'geolocationGridPoint[{0}]/slantRangeTime'.format(point))
+            'geolocationGridPoint[{0}]/slantRangeTime'.format(point+1))
         slant_range_time = float(doc_grid.xpath(xml)[0].text)
         if line == 0:
             pixels.append(pixel)
@@ -349,14 +350,14 @@ def annotation2burst_location(meta, burst_map, granule_info):
         terrain_height = height_spline(center_line, center_pixel)[0][0]
 
         xml = ('/swathTiming/burstList/burst[{0}]/azimuthAnxTime' \
-            .format(burst))
+            .format(burst+1))
         anx_time_burst = float(doc_swath.xpath(xml)[0].text)
-        xml = ('/swathTiming/burstList/burst[{0}]/azimuthTime'.format(burst))
+        xml = ('/swathTiming/burstList/burst[{0}]/azimuthTime'.format(burst+1))
         azimuth_start_time = doc_swath.xpath(xml)[0].text
         start_time = datetime.fromisoformat(azimuth_start_time)
         stop_time = start_time + timedelta(seconds=burst_time_period)
         azimuth_stop_time = stop_time.isoformat(timespec='microseconds')
-        xml = ('/swathTiming/burstList/burst[{0}]/sensingTime'.format(burst))
+        xml = ('/swathTiming/burstList/burst[{0}]/sensingTime'.format(burst+1))
         sensing_start = doc_swath.xpath(xml)[0].text
         start_time = datetime.fromisoformat(sensing_start)
         mid_time = start_time + timedelta(seconds=sensing_mid_period)
@@ -374,7 +375,7 @@ def annotation2burst_location(meta, burst_map, granule_info):
         doppler_polynomial = dopplers[index][1]
 
         xml = ('/swathTiming/burstList/burst[{0}]/firstValidSample' \
-            .format(burst))
+            .format(burst+1))
         valid_samples = \
             list(map(int, doc_swath.xpath(xml)[0].text.split(' ')))
         first_valid_sample = np.median(np.array(valid_samples)).astype(int)
@@ -383,7 +384,7 @@ def annotation2burst_location(meta, burst_map, granule_info):
         first_valid_line = int(min(valid_indices))
         last_valid_line = int(max(valid_indices))
         xml = ('/swathTiming/burstList/burst[{0}]/lastValidSample' \
-            .format(burst))
+            .format(burst+1))
         valid_samples = list(map(int, doc_swath.xpath(xml)[0].text.split(' ')))
         last_valid_sample = np.median(np.array(valid_samples)).astype(int)
         number_valid_lines = last_valid_line - first_valid_line - 1
@@ -391,10 +392,11 @@ def annotation2burst_location(meta, burst_map, granule_info):
 
         ipf = float(granule_info['ipf'])
         if ipf >= 3.4:
-            xml = ('/swathTiming/burstList/burst[{0}]/burst_id/@absolute' \
-                .format(burst))
+            xml = ('/swathTiming/burstList/burst[{0}]/burstId/@absolute' \
+                .format(burst+1))
             absolute_esa_burst_id = int(doc_swath.xpath(xml)[0])
-            xml = ('/swathTiming/burstList/burst[{0}]/burst_id'.format(burst))
+            xml = ('/swathTiming/burstList/burst[{0}]/burstId' \
+                .format(burst+1))
             relative_esa_burst_id = int(doc_swath.xpath(xml)[0].text)
         else:
             absolute_esa_burst_id = -1
@@ -402,10 +404,11 @@ def annotation2burst_location(meta, burst_map, granule_info):
 
         orbit_direction = granule_info['passDirection']
         track = granule_info['trackNumber']
-        absolute_burst_id = ('%s-%06d' % (get_burst_id(burst_map, orbit_direction,
-            track, swath, float(anx_time[burst])), granule_info['orbitNumber']))
-        relative_burst_id = get_burst_id(burst_map, orbit_direction, track, swath,
-           float(anx_time[burst]))
+        absolute_burst_id = ('%s-%06d' % (get_burst_id(burst_map,
+            orbit_direction, track, swath, float(anx_time[burst])),
+            granule_info['orbitNumber']))
+        relative_burst_id = get_burst_id(burst_map, orbit_direction, track,
+            swath, float(anx_time[burst]))
         if burst > 0:
             previous_burst_id = get_burst_id(burst_map, orbit_direction, track,
                 swath, float(anx_time[burst-1]))
@@ -445,47 +448,47 @@ def annotation2burst_location(meta, burst_map, granule_info):
 
         values.at[0,'numberOfLines'] = int(lines_per_burst)
         values.at[0,'numberOfSamples'] = int(samples_per_burst)
-        values.at[0,'starting_range'] = float(starting_range)
-        values.at[0,'sensing_start'] = sensing_start
-        values.at[0,'sensing_stop'] = sensing_stop
+        values.at[0,'startingRange'] = float(starting_range)
+        values.at[0,'sensingStart'] = sensing_start
+        values.at[0,'sensingStop'] = sensing_stop
         values.at[0,'burstStartUTC'] = azimuth_start_time
         values.at[0,'burstStopUTC'] = azimuth_stop_time
         values.at[0,'trackNumber'] = int(granule_info['trackNumber'])
         values.at[0,'frameNumber'] = int(-1)
         values.at[0,'orbitNumber'] = int(granule_info['orbitNumber'])
-        values.at[0,'swath_number'] = int(swath_number)
+        values.at[0,'swathNumber'] = int(swath_number)
         values.at[0,'burstNumber'] = int(burst) + 1
         values.at[0,'passDirection'] = granule_info['passDirection']
-        values.at[0,'azimuth_steering_rate'] = float(azimuth_steering_rate)
+        values.at[0,'azimuthSteeringRate'] = float(azimuth_steering_rate)
         values.at[0,'rangePixelSize'] = float(range_pixel_spacing)
-        values.at[0,'range_sampling_rate'] = float(range_sampling_rate)
-        values.at[0,'azimuth_time_interval'] = float(azimuth_time_interval)
-        values.at[0,'radar_wavelength'] = float(radar_wavelength)
+        values.at[0,'rangeSamplingRate'] = float(range_sampling_rate)
+        values.at[0,'azimuthTimeInterval'] = float(azimuth_time_interval)
+        values.at[0,'radarWavelength'] = float(radar_wavelength)
         values.at[0,'polarization'] = polarization
-        values.at[0,'terrain_height'] = float(terrain_height)
+        values.at[0,'terrainHeight'] = float(terrain_height)
         values.at[0,'prf'] = float(prf)
-        values.at[0,'first_valid_line'] = int(first_valid_line)
+        values.at[0,'firstValidLine'] = int(first_valid_line)
         values.at[0,'numValidLines'] = int(number_valid_lines)
-        values.at[0,'first_valid_sample'] = int(first_valid_sample)
-        values.at[0,'numvalid_samples'] = int(number_valid_samples)
-        values.at[0,'range_window_type'] = range_window_type
-        values.at[0,'range_window_coefficient'] = \
+        values.at[0,'firstValidSample'] = int(first_valid_sample)
+        values.at[0,'numValidSamples'] = int(number_valid_samples)
+        values.at[0,'rangeWindowType'] = range_window_type
+        values.at[0,'rangeWindowCoefficient'] = \
             float(range_window_coefficient)
-        values.at[0,'azimuth_window_type'] = azimuth_window_type
-        values.at[0,'azimuth_window_coefficient'] = \
+        values.at[0,'azimuthWindowType'] = azimuth_window_type
+        values.at[0,'azimuthWindowCoefficient'] = \
             float(azimuth_window_coefficient)
         values.at[0,'azimuthFMRate'] = \
             ','.join(map(str, azimuth_fm_rate_polynomial))
         values.at[0,'doppler'] = ','.join(map(str, doppler_polynomial))
 
-        values.at[0,'absolute_burst_id'] = absolute_burst_id
-        values.at[0,'relative_burst_id'] = relative_burst_id
-        values.at[0,'previous_burst_id'] = previous_burst_id
-        values.at[0,'next_burst_id'] = next_burst_id
-        values.at[0,'absolute_esa_burst_id'] = absolute_esa_burst_id
-        values.at[0,'relative_esa_burst_id'] = relative_esa_burst_id
+        values.at[0,'absoluteBurstID'] = absolute_burst_id
+        values.at[0,'relativeBurstID'] = relative_burst_id
+        values.at[0,'previousBurstID'] = previous_burst_id
+        values.at[0,'nextBurstID'] = next_burst_id
+        values.at[0,'absoluteESAburstID'] = absolute_esa_burst_id
+        values.at[0,'relativeESAburstID'] = relative_esa_burst_id
         values.at[0,'timeSinceAnxNode'] = anx_time_burst
-        values.at[0,'ascending_node_time'] = granule_info['ascending_node_time']
+        values.at[0,'ascendingNodeTime'] = granule_info['ascendingNodeTime']
         values.at[0,'hasLand'] = True
         values.at[0,'crossesDateLine'] = False
         values.at[0,'landFraction'] = 1.0
@@ -530,7 +533,7 @@ def get_burst_id(burst_map, orbit_direction, track, swath, anx_time):
     return burst_id
 
 
-def get_sentinal_bursts(safe_dir, burst_map_file, zip_handle=None, url_str=None):
+def get_sentinel_bursts(safe_dir, burst_map_file, zip_handle=None, url_str=None):
     """Get Sentinel bursts"""
 
     ### Read burst map
@@ -549,12 +552,13 @@ def get_sentinal_bursts(safe_dir, burst_map_file, zip_handle=None, url_str=None)
 
     (manifest, annotation_iw1, annotation_iw2, annotation_iw3) = \
         extract_metadata(safe_dir, zip_handle)
-    print('Extracting information for granule ({safe_dir[:-6]}) ...')
+    granule = safe_dir[:-6]
+    print(f'Extracting information for granule ({granule}) ...')
 
     doc = et.fromstring(manifest['metadataSection'])
-    meta_object_count = len(doc.xpath('/metadataSection/metadataObject/@index'))
+    meta_object_count = len(doc.xpath('/metadataSection/metadataObject/@ID'))
     for i in range(1,meta_object_count+1):
-        index = doc.xpath('/metadataSection/metadataObject[{0}]/@index' \
+        index = doc.xpath('/metadataSection/metadataObject[{0}]/@ID' \
             .format(i))[0]
         if index == 'processing':
             ipf = doc.xpath('/metadataSection/metadataObject[{0}]/' \
@@ -576,7 +580,7 @@ def get_sentinal_bursts(safe_dir, burst_map_file, zip_handle=None, url_str=None)
             abolute_orbit_number = int(param[0].text)
             param = doc.xpath('/metadataSection/metadataObject[{0}]/' \
                 'metadataWrap/xmlData/safe:orbitReference/' \
-                'safe:relative_orbit_number[@type="start"]'.format(i),
+                'safe:relativeOrbitNumber[@type="start"]'.format(i),
                 namespaces=names)
             relative_orbit_number = int(param[0].text)
             param = doc.xpath('/metadataSection/metadataObject[{0}]/' \
@@ -585,7 +589,7 @@ def get_sentinal_bursts(safe_dir, burst_map_file, zip_handle=None, url_str=None)
             orbit_direction = param[0].text
             param = doc.xpath('/metadataSection/metadataObject[{0}]/' \
                 'metadataWrap/xmlData/safe:orbitReference/safe:extension/' \
-                's1:orbitProperties/s1:ascending_node_time'.format(i),
+                's1:orbitProperties/s1:ascendingNodeTime'.format(i),
                 namespaces=names)
             ascending_node_time = param[0].text
 
@@ -594,7 +598,6 @@ def get_sentinal_bursts(safe_dir, burst_map_file, zip_handle=None, url_str=None)
         url = 'https://api.daac.asf.alaska.edu/services/search/' \
             'param?granule_list='
         url += safe_dir[:-6]
-        #print(url)
         data = requests.get(url).content
         data = json.dumps(xmltodict.parse(data.decode()))
         string = json.loads(data)
@@ -605,10 +608,10 @@ def get_sentinal_bursts(safe_dir, burst_map_file, zip_handle=None, url_str=None)
     granule_info = {}
     granule_info['platform'] = platform
     granule_info['orbitNumber'] = abolute_orbit_number
-    granule_info['relative_orbit_number'] = relative_orbit_number
+    granule_info['relativeOrbitNumber'] = relative_orbit_number
     granule_info['trackNumber'] = relative_orbit_number
     granule_info['passDirection'] = orbit_direction
-    granule_info['ascending_node_time'] = ascending_node_time
+    granule_info['ascendingNodeTime'] = ascending_node_time
     granule_info['granule'] = safe_dir[:-6]
     granule_info['urlOfFrame'] = url_str
     granule_info['ipf'] = ipf
@@ -649,47 +652,47 @@ def fix_data_types(dataframe):
 
     dataframe['numberOfLines'] = dataframe['numberOfLines'].astype('int32')
     dataframe['numberOfSamples'] = dataframe['numberOfSamples'].astype('int32')
-    dataframe['starting_range'] = dataframe['starting_range'].astype('float32')
-    dataframe['sensing_start'] = pd.to_datetime(dataframe['sensing_start'])
-    dataframe['sensing_stop'] = pd.to_datetime(dataframe['sensing_stop'])
+    dataframe['startingRange'] = dataframe['startingRange'].astype('float32')
+    dataframe['sensingStart'] = pd.to_datetime(dataframe['sensingStart'])
+    dataframe['sensingStop'] = pd.to_datetime(dataframe['sensingStop'])
     dataframe['burstStartUTC'] = pd.to_datetime(dataframe['burstStartUTC'])
     dataframe['burstStopUTC'] = pd.to_datetime(dataframe['burstStopUTC'])
     dataframe['trackNumber'] = dataframe['trackNumber'].astype('int32')
     dataframe['frameNumber'] = dataframe['frameNumber'].astype('int32')
     dataframe['orbitNumber'] = dataframe['orbitNumber'].astype('int32')
-    dataframe['swath_number'] = dataframe['swath_number'].astype('int32')
+    dataframe['swathNumber'] = dataframe['swathNumber'].astype('int32')
     dataframe['burstNumber'] = dataframe['burstNumber'].astype('int32')
-    dataframe['azimuth_steering_rate'] = \
-        dataframe['azimuth_steering_rate'].astype('float32')
+    dataframe['azimuthSteeringRate'] = \
+        dataframe['azimuthSteeringRate'].astype('float32')
     dataframe['rangePixelSize'] = dataframe['rangePixelSize'].astype('float32')
-    dataframe['range_sampling_rate'] = \
-        dataframe['range_sampling_rate'].astype('float32')
-    dataframe['azimuth_time_interval'] = \
-        dataframe['azimuth_time_interval'].astype('float32')
-    dataframe['radar_wavelength'] = \
-        dataframe['radar_wavelength'].astype('float32')
-    dataframe['terrain_height'] = dataframe['terrain_height'].astype('float32')
+    dataframe['rangeSamplingRate'] = \
+        dataframe['rangeSamplingRate'].astype('float32')
+    dataframe['azimuthTimeInterval'] = \
+        dataframe['azimuthTimeInterval'].astype('float32')
+    dataframe['radarWavelength'] = \
+        dataframe['radarWavelength'].astype('float32')
+    dataframe['terrainHeight'] = dataframe['terrainHeight'].astype('float32')
     dataframe['prf'] = dataframe['prf'].astype('float32')
-    dataframe['first_valid_line'] = \
-        dataframe['first_valid_line'].astype('int32')
+    dataframe['firstValidLine'] = \
+        dataframe['firstValidLine'].astype('int32')
     dataframe['numValidLines'] = dataframe['numValidLines'].astype('int32')
-    dataframe['first_valid_sample'] = \
-        dataframe['first_valid_sample'].astype('int32')
-    dataframe['numvalid_samples'] = \
-        dataframe['numvalid_samples'].astype('int32')
-    dataframe['range_window_coefficient'] = \
-        dataframe['range_window_coefficient'].astype('float32')
-    dataframe['azimuth_window_coefficient'] = \
-        dataframe['azimuth_window_coefficient'].astype('float32')
+    dataframe['firstValidSample'] = \
+        dataframe['firstValidSample'].astype('int32')
+    dataframe['numValidSamples'] = \
+        dataframe['numValidSamples'].astype('int32')
+    dataframe['rangeWindowCoefficient'] = \
+        dataframe['rangeWindowCoefficient'].astype('float32')
+    dataframe['azimuthWindowCoefficient'] = \
+        dataframe['azimuthWindowCoefficient'].astype('float32')
 
-    dataframe['absolute_esa_burst_id'] = \
-        dataframe['absolute_esa_burst_id'].astype('int32')
-    dataframe['relative_esa_burst_id'] = \
-        dataframe['relative_esa_burst_id'].astype('int32')
+    dataframe['absoluteESAburstID'] = \
+        dataframe['absoluteESAburstID'].astype('int32')
+    dataframe['relativeESAburstID'] = \
+        dataframe['relativeESAburstID'].astype('int32')
     dataframe['timeSinceAnxNode'] = \
         dataframe['timeSinceAnxNode'].astype('float32')
-    dataframe['ascending_node_time'] = \
-        pd.to_datetime(dataframe['ascending_node_time'])
+    dataframe['ascendingNodeTime'] = \
+        pd.to_datetime(dataframe['ascendingNodeTime'])
     dataframe['hasLand'] = dataframe['hasLand'].astype('bool')
     dataframe['crossesDateLine'] = dataframe['crossesDateLine'].astype('bool')
     dataframe['landFraction'] = dataframe['landFraction'].astype('float32')
@@ -753,12 +756,12 @@ def get_sentinel_files(safe, meta):
     data_objects = doc.xpath('/dataObjectSection/dataObject')
     for i in range(len(data_objects)):
         file = {}
-        href = doc.xpath(f'/dataObjectSection/dataObject[{i}+1]/byteStream/' \
-            'fileLocation/@href')[0]
+        href = doc.xpath('/dataObjectSection/dataObject[{0}]/byteStream/' \
+            'fileLocation/@href'.format(i+1))[0]
         file_parts = os.path.basename(href).split('-')
         file['name'] = os.path.join(safe, href[2:])
-        file['index'] = doc.xpath(f'/dataObjectSection/dataObject[{1}+1]/' \
-            '@index')[0]
+        file['index'] = doc.xpath('/dataObjectSection/dataObject[{0}]/' \
+            '@ID'.format(i+1))[0]
         if file['index'] == 'mapoverlay':
             file['type'] = 'preview'
         elif file['index'] == 'productpreview':
@@ -795,10 +798,10 @@ def get_sentinel_files(safe, meta):
             file['polarization'] = file_parts[3].upper()
             file['start_time'] = file_parts[4]
             file['stop_time'] = file_parts[5]
-            file['size'] = int(doc.xpath('/dataObjectSection/' \
-                'dataObject[{i}+1]/byteStream/@size')[0])
-            file['checksum'] = doc.xpath('/dataObjectSection/' \
-                'dataObject[{i}+1]/byteStream/checksum')[0].text
-            files.append(file)
+        file['size'] = int(doc.xpath('/dataObjectSection/' \
+            'dataObject[{0}]/byteStream/@size'.format(i+1))[0])
+        file['checksum'] = doc.xpath('/dataObjectSection/' \
+            'dataObject[{0}]/byteStream/checksum'.format(i+1))[0].text
+        files.append(file)
 
     return files
