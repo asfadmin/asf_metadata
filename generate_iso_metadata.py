@@ -9,7 +9,8 @@ from metadata.asf_metadata import iso_template2lists, add_dem_lists, \
   cleanJSONstructure, cleanXMLstructure
   
 
-def generate_iso_metadata(productType, logFile, excelFile, demFile, isoBase):
+def generate_iso_metadata(productType, dataSource, metaFile, logFile, 
+  excelFile, demFile, isoBase):
 
   if demFile is not None:
     print('DEM template: {0}'.format(demFile))
@@ -27,7 +28,8 @@ def generate_iso_metadata(productType, logFile, excelFile, demFile, isoBase):
     demTemplate = None
 
   ### Generate product dictionary
-  isoProdDict = generate_product_dictionary(productType, logFile)
+  isoProdDict = \
+    generate_product_dictionary(productType, dataSource, metaFile, logFile)
   
   ### Map product dictionary to values
   isoProdValues = product_dictionary2values(isoValues, isoProdDict)
@@ -57,9 +59,14 @@ if __name__ == '__main__':
     description='Generate ISO metadata file from Excel spreadsheet',
     formatter_class=RawTextHelpFormatter)
   parser.add_argument('productType', help='name of the product type')
-  parser.add_argument('logFile', help='name of processing log file')
+  parser.add_argument('metaFile', help='file path of product metadata ' \
+    'such as a "manifest.safe" or leader file')
+  parser.add_argument('logFile', help='name of RTC processing log file')
   parser.add_argument('excelFile', 
     help='name of the Excel template spreadsheet')
+  parser.add_argument('-dataSource', default='sentinel', 
+    help='name of the data source (default: sentinel)\n' \
+      'choices: ["sentinel"]')
   parser.add_argument('-dem', default=None,
     help='name of DEM template spreadsheet')
   parser.add_argument('isoBase', help='basename of the ISO XML metadata file')
@@ -68,5 +75,5 @@ if __name__ == '__main__':
     sys.exit(1)
   args = parser.parse_args()
 
-  generate_iso_metadata(args.productType.upper(), args.logFile, args.excelFile,
-    args.dem, args.isoBase)
+  generate_iso_metadata(args.productType.upper(), args.dataSource.upper(), 
+    args.metaFile, args.logFile, args.excelFile, args.dem, args.isoBase)
