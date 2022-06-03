@@ -94,20 +94,21 @@ optional arguments:
 
 <h3>Generate ISO metadata file from Excel spreadsheet</h3>
 <pre>
-usage: generate_iso_metadata.py [-h] [-dem DEM] productType logFile excelFile isoBase
+usage: generate_iso_metadata.py [-h] [-dem DEM] productType dataSource metaFile logFile excelFile isoBase
 
 Generate ISO metadata file from Excel spreadsheet
 
 positional arguments:
   productType  name of the product type
-  logFile      name of processing log file
+  dataSource   name of the data source
+  metaFile     name of the input metadata file
+  logFile      name of RTC processing log file
   excelFile    name of the Excel template spreadsheet
   isoBase      basename of the ISO XML metadata file
 
 optional arguments:
   -h, --help   show this help message and exit
-  -dem DEM     name of DEM template spreadsheet
-</pre>
+  -dem DEM     name of DEM template spreadsheet</pre>
 
 <p>At the moment, I have only added one function <em>gammaRTClog2meta</em> that analyzes GAMMA RTC log files for metadata. The corresponding product type is 'GAMMA RTC'.</p>
 
