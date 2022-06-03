@@ -11,10 +11,11 @@ import re
 import os
 from osgeo import gdal, osr
 import glob
-from metadata.util import getValue, rreplace, uniqueList, \
+
+from .util import getValue, rreplace, uniqueList, \
   getParamsDataframe, params2dictList, upgradeDictionary2level, \
   mergeDictionaryParams, getLevelParamsList
-from metadata.sentinelMetadata import parseLine, get_latlon_extent, \
+from .sentinelMetadata import parseLine, get_latlon_extent, \
   readManifestFile, readAnnotationFile
 
 
