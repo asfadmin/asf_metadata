@@ -18,7 +18,7 @@ setup(
     name="asf_metadata",
     # version=Declared in pyproject.toml, through "[tool.setuptools_scm]"
     author="Alaska Satellite Facility Coop Team",
-    author_email="TODO ADD GOOD EMAIL",
+    author_email="UAF-ASF-CD@alaska.edu",
     description="Python wrapper for ASF's metadata",
     long_description=readme,
     long_description_content_type="text/markdown",
