@@ -15,4 +15,6 @@ jobs:
         with:
           fileName: CHANGELOG.md
           noChangelogLabel: skip-release
-          checkNotification: Simple # default `Detailed`
+          checkNotification: Detailed
+        env:
+          GITHUB_TOKEN: ${{ secrets._GITHUB_BOT_TOKEN }}
