@@ -35,6 +35,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - Sentinel Burst map logic.
+- Added pypi release pipeline.
 
 ### Fixed
 
