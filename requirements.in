@@ -1,4 +1,12 @@
 lxml
 numpy
+scipy
 openpyxl
 pandas
+geopandas
+sqlalchemy
+requests
+remotezip
+geoalchemy2
+psycopg2
+xmltodict

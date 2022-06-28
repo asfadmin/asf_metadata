@@ -1,13 +1,13 @@
-<h1>asf-metadata</h1>
+<h1>asf_metadata</h1>
 
-<p>This repo contains all the Python 3.8 scripts related to manage ASF metadata. These are currently mostly dealing with ISO metadata. In future, these will likely extended to UMM and CMR functionality.</p>
+<p>This repo contains all the Python 3.8 scripts related to manage ASF metadata. These are currently mostly dealing with ISO metadata.</p>
 
 <h2>Table of Contents</h2>
 <ul>
 <li><a href="#iso-template">ISO template</a></li>
 <li><a href="#excel-spreadsheet">Excel spreadsheet</a></li>
-<li><a href="#functions">Functions</a></li>
-<li><a href="#tools">Tools</a></li>
+<li><a href="#iso-functions">ISO metdata functions</a></li>
+<li><a href="#iso-tools">ISO metadata tools</a></li>
 </ul>
 <br />
 
@@ -44,7 +44,7 @@
 <p>This worksheet defines the URLs for the individual namespaces needed in the XML declarations.</p>
 <br />
 
-<h2 id="functions">Functions</h2>
+<h2 id="iso-functions">ISO metadata functions</h2>
 <p>I developed a number of functions that perform the various tasks outline above.</p>
 
 <h3>Extracting information from templates</h3>
@@ -69,10 +69,10 @@
 <p>There are two separate functions to save the metadata to a file format. <em>meta_xml_file</em> is the function that generates an ISO XML metadata file, while <em>meta_json_file</em> saves the metadata in JSON format.</p>
 
 <h3>Cleaning up metadata</h3>
-<p>There are two separate functions to clean up the metadata structures. <em>cleanXMLstructure</em> (for XML files) and <em>cleanJSONstructure</em> (for JSON files) is the function that removes metadata for product files (digital elevation model, incidence angle map, scattering area map) that are only optionally included.</p>
+<p>There are two separate functions to clean up the metadata structures. <em>clean_xml_structure</em> (for XML files) and <em>clean_json_structure</em> (for JSON files) is the function that removes metadata for product files (digital elevation model, incidence angle map, scattering area map) that are only optionally included.</p>
 <br />
 
-<h2 id="tools">Tools</h2>
+<h2 id="iso-tools">ISO metadata tools</h2>
 <p>I developed a number of tools that perform the various tasks outline above.</p>
 
 <h3>Generate ISO template file from Excel spreadsheet</h3>
@@ -92,39 +92,27 @@ optional arguments:
 
 <h3>Generate ISO metadata file from Excel spreadsheet</h3>
 <pre>
-usage: generate_iso_metadata.py [-h] [-dem DEM] productType dataSource metaFile logFile excelFile isoBase
+usage: generate_iso_metadata.py [-h] [-product PRODUCT] [-data DATA] [-dem DEM] meta_file log_file iso_base
 
 Generate ISO metadata file from Excel spreadsheet
 
 positional arguments:
-  productType  name of the product type
-  dataSource   name of the data source
-  metaFile     name of the input metadata file
-  logFile      name of RTC processing log file
-  excelFile    name of the Excel template spreadsheet
-  isoBase      basename of the ISO XML metadata file
+  meta_file         file path of product metadata such as a "manifest.safe" or leader file
+  log_file          name of RTC processing log file
+  iso_base          basename of the ISO XML metadata file
 
 optional arguments:
-  -h, --help   show this help message and exit
-  -dem DEM     name of DEM template spreadsheet</pre>
-
-<p>At the moment, I have only added one function <em>gammaRTClog2meta</em> that analyzes GAMMA RTC log files for metadata. The corresponding product type is 'GAMMA RTC'.</p>
-
-<h3>Convert ISO metadata from XML to JSON format</h3>
-<pre>
-usage: iso_metadata_xml2json.py [-h] [-dem DEM] excelFile xmlFile jsonFile
-
-Convert ISO metadata from XML to JSON format
-
-positional arguments:
-  excelFile   name of the Excel template spreadsheet
-  xmlFile     name of the ISO metadata XML file
-  jsonFile    name of the ISO metadata JSON file
-
-optional arguments:
-  -h, --help  show this help message and exit
-  -dem DEM    name of DEM template spreadsheet
+  -h, --help        show this help message and exit
+  -product PRODUCT  name of the product type (default: gamma_rtc)
+                    choices: ["gamma_rtc"]
+  -data DATA        name of the data source (default: sentinel)
+                    choices: ["sentinel"]
+  -dem DEM          DEM type used for terrain correction
+                    choices: ["copernicus"]
 </pre>
+
+<p>At the moment, I have only added one function <em>gamma_rtc_log2meta</em> that analyzes GAMMA RTC log files for metadata. The corresponding product type is 'gamma_rtc'.</p>
+
 
 <h2>Author</h2>
 <p>Rudi Gens</p>
