@@ -4,8 +4,8 @@
 import argparse
 from argparse import RawTextHelpFormatter
 import sys
-from metadata.asf_metadata import iso_template2lists, add_dem_lists, \
-    iso_xml_structure, meta_xml_file, iso_dictionary_structure, meta_json_file
+from asf_metadata.metadata.asf_metadata import iso_template2lists, add_dem_lists, \
+  iso_xml_structure, meta_xml_file, iso_dictionary_structure, meta_json_file
 
 
 # Wrapper for the command line version
