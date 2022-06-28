@@ -13,11 +13,11 @@ import pandas as pd
 import numpy as np
 from osgeo import gdal, osr
 
-from .util import getValue, rreplace, uniqueList, \
-  getParamsDataframe, params2dictList, upgradeDictionary2level, \
-  mergeDictionaryParams, getLevelParamsList
-from .sentinelMetadata import parseLine, get_latlon_extent, \
-  readManifestFile, readAnnotationFile
+from .util import get_value, rreplace, unique_list, \
+  get_params_dataframe, params2dict_list, upgrade_dictionary2level, \
+  merge_dictionary_params, get_level_params_list
+from .sentinel_metadata import parse_line, get_latlon_extent, \
+  read_manifest_file, read_annotation_file
 
 
 def meta_project2epsg(meta_dict):
