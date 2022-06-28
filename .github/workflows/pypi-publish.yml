@@ -7,7 +7,7 @@ on:
   release:
     types: [created]
     branches:
-      - stable
+      - main
 
 jobs:
 
