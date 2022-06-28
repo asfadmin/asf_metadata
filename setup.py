@@ -2,9 +2,18 @@
 from setuptools import find_packages, setup
 
 requirements = [
-    "pandas",
-    "numpy",
     "lxml",
+    "numpy",
+    "scipy",
+    "openpyxl",
+    "pandas",
+    "geopandas",
+    "sqlalchemy",
+    "requests",
+    "remotezip",
+    "geoalchemy2",
+    "psycopg2",
+    "xmltodict",
 ]
 
 test_requirements = [

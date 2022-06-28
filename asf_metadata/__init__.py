@@ -20,7 +20,6 @@ except ImportError as e:
     """) from e
 
 # Import what the user is supposed to use directly
-from asf_metadata import \
-    generate_iso_metadata, \
-    generate_iso_template, \
-    iso_metadata_xml2json
+from asf_metadata.generate_iso_metadata import generate_iso_metadata
+from asf_metadata.generate_iso_template import generate_iso_template
+from asf_metadata.iso_metadata_xml2json import iso_metadata_xml2json

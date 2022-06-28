@@ -9,7 +9,7 @@ on:
       - unlabeled
       - synchronize
     branches:
-      - stable
+      - main
 
 jobs:
   check-version-label:
