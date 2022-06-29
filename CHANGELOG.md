@@ -30,6 +30,14 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ------
 
+## [0.0.5](https://github.com/asfadmin/asf_metadata/compare/v0.0.4...v0.0.5)
+
+### Fixed
+
+- Include `templates` dir to package, by setting `include_package_data=True` in `setup.py`.
+
+------
+
 ## [0.0.4](https://github.com/asfadmin/asf_metadata/compare/v0.0.3...v0.0.4)
 
 ### Fixed
