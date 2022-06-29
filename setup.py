@@ -38,7 +38,8 @@ setup(
     packages=find_packages(),
     package_dir={'asf_metadata': 'asf_metadata'},
     # Tells pypi to include these file types in the package
-    package_data={"asf_metadata": ["*.png", "*.xlsx"]},
+    package_data={"asf_metadata": ["*.png", "*.xlsx", "*.md"]},
+    include_package_data=True,
     python_requires='>=3.6',
     install_requires=requirements,
     extras_require={ "test": test_requirements },
