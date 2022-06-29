@@ -30,6 +30,14 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ------
 
+## [0.0.4](https://github.com/asfadmin/asf_metadata/compare/v0.0.3...v0.0.4)
+
+### Fixed
+
+- Let users import `asf_metadata.metadata` by adding `__init__.py` to that directory.
+
+------
+
 ## [0.0.3](https://github.com/asfadmin/asf_metadata/compare/v0.0.2...v0.0.3)
 
 ### Changed
