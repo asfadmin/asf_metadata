@@ -557,7 +557,7 @@ def generate_product_dictionary(product_type, data_type, meta_file,
     log_file):
     """Generate product dictionary"""
 
-    if product_type == 'gamma_rtc':
+    if product_type in ('gamma_rtc', 'rtc'):
         meta = gamma_rtc_log2meta(data_type, meta_file, log_file)
 
     return meta
