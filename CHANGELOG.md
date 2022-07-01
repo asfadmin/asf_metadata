@@ -34,7 +34,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
-- Bug fix in writing ISO XML file in `generate_iso_metadata.py`.
+- Bug in writing ISO XML file in `generate_iso_metadata.py`.
 
 ------
 
