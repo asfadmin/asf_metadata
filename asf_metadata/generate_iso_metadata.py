@@ -52,6 +52,7 @@ def generate_iso_metadata(meta_file, log_file, iso_base, product_type,
     print(f'Writing ISO metadata structure to XML file ({iso_file}) ...')
     iso_structure = iso_xml_structure(excel_file, iso_template, iso_params, \
         iso_prod_values, True)
+    meta_xml_file(iso_structure, iso_file)
     iso_structure = clean_xml_structure(iso_file)
     meta_xml_file(iso_structure, iso_file)
 
