@@ -12,7 +12,6 @@ requirements = [
     "requests",
     "remotezip",
     "geoalchemy2",
-    "psycopg2",
     "xmltodict",
 ]
 
