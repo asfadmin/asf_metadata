@@ -30,7 +30,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ------
 
-## [0.0.7](https://github.com/asfadmin/asf_metadata/compare/v0.0.5...v0.0.6)
+## [0.0.7](https://github.com/asfadmin/asf_metadata/compare/v0.0.6...v0.0.7)
 
 ### Added
 
