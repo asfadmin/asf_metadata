@@ -181,7 +181,8 @@ def get_level_params_list(meta_template, meta_attributes, level):
     dataframe = pd.DataFrame(index=range(row_count), columns=range(level_count))
     for i in range(row_count):
         meta_element = meta_template[i].split('/')
-        for k in range(len(meta_element)):
+        meta_element_count = len(meta_element)
+        for k in range(meta_element_count):
             dataframe.at[i,k] = meta_element[k]
         if meta_attributes:
             if isinstance(meta_attributes[i], str) and level == k+1:
@@ -245,7 +246,8 @@ def params2dict_list(dataframe, meta_params, meta_values, level):
     dict_list = []
     row_index = list(dataframe.count(axis=1) - 1)
     col_index = list(dataframe.sum(axis=0))
-    for i in range(len(col_index)):
+    col_index_count = len(col_index)
+    for i in range(col_index_count):
         if col_index[i] > 0:
             row_index.append(i)
     row_index = pd.Series(row_index)
@@ -446,3 +448,21 @@ def access_remote_zip(zip_file):
     zip_filehandle = remotezip.RemoteZip(zip_file, cookies=jar)
 
     return zip_filehandle
+
+
+def dataframe2template(meta, level_count):
+
+    ### Read all entries from the dataframe into the template
+    (row_count, _) = meta.shape
+    template = []
+    for i in range(row_count):
+        param = ''
+        for k in range(level_count):
+            element = str(meta.at[i, k])
+            if element != 'nan':
+                param += element
+                if k < (level_count-1) and str(meta.at[i, k+1]) != 'nan':
+                    param += '/'
+        template.append(param)
+
+    return template

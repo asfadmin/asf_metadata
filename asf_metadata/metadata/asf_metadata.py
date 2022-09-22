@@ -12,12 +12,12 @@ from lxml import objectify
 import pandas as pd
 import numpy as np
 from osgeo import gdal, osr
-
-from .util import get_value, rreplace, unique_list, \
-  get_params_dataframe, params2dict_list, upgrade_dictionary2level, \
-  merge_dictionary_params, get_level_params_list
-from .sentinel_metadata import parse_line, get_latlon_extent, \
-  read_manifest_file, read_annotation_file
+import flatdict
+from metadata.util import get_value, rreplace, unique_list, \
+    get_params_dataframe, params2dict_list, upgrade_dictionary2level, \
+    merge_dictionary_params, get_level_params_list, dataframe2template
+from metadata.sentinel_metadata import parse_line, get_latlon_extent, \
+    read_manifest_file, read_annotation_file
 
 
 def meta_project2epsg(meta_dict):
@@ -49,6 +49,54 @@ def update_template(template, list_params):
                         rreplace(template[k], list_param, new_element)
 
     return template
+
+
+def get_duplicate_indices(template, list_param):
+    """Get start and stop indices of duplicates in the template"""
+
+    param_list = []
+    param_list.append(list_param)
+    duplicates = [substring for substring in template
+        if all((element in substring) for element in param_list)]
+    duplicate_count = len(duplicates)
+    indices = []
+    for i in range(duplicate_count):
+        indices.append(template.index(duplicates[i]))
+
+    return indices
+
+
+def add_duplicates2metadata(meta, list_params, list_counts):
+    """Add duplicates to metadata"""
+
+    ### Check dimensions
+    (row_count, column_count) = meta.shape
+    level_count = column_count - 6
+
+    ### Convert dataframe to template
+    template = dataframe2template(meta, level_count)
+
+    ### Add duplicate parameters
+    new_meta = pd.DataFrame()
+    duplicate_count = len(list_params)
+    for i in range(row_count):
+        if '[i]' not in str(meta.at[i,'Value']) and \
+            meta.at[i,'Type'] != 'list':
+            new_meta = pd.concat([new_meta, pd.DataFrame([meta.iloc[i]])])
+        for k in range(duplicate_count):
+            if template[i] == list_params[k]:
+                indices = get_duplicate_indices(template, list_params[k])
+                for l in range(list_counts[k]):
+                    sub_index = (f'[{l}]')
+                    for m in indices:
+                        new_row = meta.iloc[m].copy(deep=True)
+                        new_row['Value'] = \
+                            new_row['Value'].replace('[i]',sub_index)
+                        new_meta = pd.concat([new_meta,
+                            pd.DataFrame([new_row])])
+    new_meta.reset_index(drop=True, inplace=True)
+
+    return new_meta
 
 
 def iso_template2lists(excel_file, worksheet):
@@ -120,7 +168,8 @@ def merge_iso_dem_template(iso_template, dem_template):
     max_identification_index = 0
     max_content_info = 0
     max_content_index = 0
-    for i in range(len(iso_template)):
+    iso_template_count = len(iso_template)
+    for i in range(iso_template_count):
         test_level = iso_template[i][-2:-1]
         if iso_template[i][:-3].endswith('identificationInfo'):
             if max_identification_info < int(test_level):
@@ -136,7 +185,8 @@ def merge_iso_dem_template(iso_template, dem_template):
 
     ### Analyze DEM template
     max_index = 0
-    for i in range(len(dem_template)):
+    dem_template_count = len(dem_template)
+    for i in range(dem_template_count):
         if 'identificationInfo' in dem_template[i] and max_index < i:
             max_index = i
 
@@ -145,8 +195,7 @@ def merge_iso_dem_template(iso_template, dem_template):
     for i in range(max_identification_index+1):
         merged_template.append(iso_template[i])
     original_string = 'identificationInfo[1]'
-    replace_string = \
-        ('identificationInfo[{0}]'.format(max_identification_info+1))
+    replace_string = (f'identificationInfo[{max_identification_info+1}]')
     for i in range(max_index+1):
         if 'identificationInfo' in dem_template[i]:
             dem_info = dem_template[i].replace(original_string, replace_string)
@@ -154,7 +203,7 @@ def merge_iso_dem_template(iso_template, dem_template):
     for i in range(max_identification_index+1, max_content_index+1):
         merged_template.append(iso_template[i])
     original_string = 'contentInfo[1]'
-    replace_string = ('contentInfo[{0}]'.format(max_identification_info+1))
+    replace_string = (f'contentInfo[{max_identification_info+1}]')
     for i in range(max_index+1, len(dem_template)):
         dem_info = dem_template[i].replace(original_string, replace_string)
         merged_template.append(dem_info)
@@ -173,7 +222,8 @@ def add_dem_lists(iso_template, iso_params, iso_values, dem_template,
     max_identification_index = 0
     max_content_info = 0
     max_content_index = 0
-    for i in range(len(iso_template)):
+    iso_template_count = len(iso_template)
+    for i in range(iso_template_count):
         test_level = iso_template[i][-2:-1]
         if iso_template[i][:-3].endswith('identificationInfo'):
             if max_identification_info < int(test_level):
@@ -189,7 +239,8 @@ def add_dem_lists(iso_template, iso_params, iso_values, dem_template,
 
     ### Analyze DEM template
     max_index = 0
-    for i in range(len(dem_template)):
+    dem_template_count = len(dem_template)
+    for i in range(dem_template_count):
         if 'identificationInfo' in dem_template[i] and max_index < i:
             max_index = i
 
@@ -198,8 +249,7 @@ def add_dem_lists(iso_template, iso_params, iso_values, dem_template,
     for i in range(max_identification_index+1):
         merged_template.append(iso_template[i])
     original_string = 'identificationInfo[1]'
-    replace_string = \
-        ('identificationInfo[{0}]'.format(max_identification_info+1))
+    replace_string = (f'identificationInfo[{max_identification_info+1}]')
     for i in range(max_index+1):
         if 'identificationInfo' in dem_template[i]:
             dem_info = dem_template[i].replace(original_string, replace_string)
@@ -207,8 +257,7 @@ def add_dem_lists(iso_template, iso_params, iso_values, dem_template,
     for i in range(max_identification_index+1, max_content_index+1):
         merged_template.append(iso_template[i])
     original_string = 'contentInfo[1]'
-    replace_string = \
-        ('contentInfo[{0}]'.format(max_identification_info+1))
+    replace_string = (f'contentInfo[{max_identification_info+1}]')
     for i in range(max_index+1, len(dem_template)):
         dem_info = dem_template[i].replace(original_string, replace_string)
         merged_template.append(dem_info)
@@ -218,7 +267,8 @@ def add_dem_lists(iso_template, iso_params, iso_values, dem_template,
     ### Analyze ISO params and values
     max_identification_index = 0
     max_content_index = 0
-    for i in range(len(iso_params)):
+    iso_param_count = len(iso_params)
+    for i in range(iso_param_count):
         if 'identificationInfo' in iso_params[i] and \
             max_identification_index < i:
             max_identification_index = i
@@ -227,7 +277,8 @@ def add_dem_lists(iso_template, iso_params, iso_values, dem_template,
 
     ### Analyze DEM params
     max_index = 0
-    for i in range(len(dem_params)):
+    dem_param_count = len(dem_params)
+    for i in range(dem_param_count):
         if 'identificationInfo' in dem_params[i] and max_index < i:
             max_index = i
 
@@ -238,8 +289,7 @@ def add_dem_lists(iso_template, iso_params, iso_values, dem_template,
         merged_params.append(iso_params[i])
         merged_values.append(iso_values[i])
     original_string = 'identificationInfo[1]'
-    replace_string = \
-        ('identificationInfo[{0}]'.format(max_identification_info+1))
+    replace_string = (f'identificationInfo[{max_identification_info+1}]')
     for i in range(max_index+1):
         dem_info = dem_params[i].replace(original_string, replace_string)
         merged_params.append(dem_info)
@@ -248,7 +298,7 @@ def add_dem_lists(iso_template, iso_params, iso_values, dem_template,
         merged_params.append(iso_params[i])
         merged_values.append(iso_values[i])
     original_string = 'contentInfo[1]'
-    replace_string = ('contentInfo[{0}]'.format(max_identification_info+1))
+    replace_string = (f'contentInfo[{max_identification_info+1}]')
     for i in range(max_index+1, len(dem_params)):
         dem_info = dem_params[i].replace(original_string, replace_string)
         merged_params.append(dem_info)
@@ -326,10 +376,10 @@ def iso_xml_structure(excel_file, iso_template, iso_params, iso_values,
         level_elements.append(unique_list(meta))
 
     ### Build XMl element tree from nested dictionary
-    name_space = ('{%s}' % ns_lut.at[ns_pairs['DS_Series'],'URL'])
+    name_space = (f"{ns_lut.at[ns_pairs['DS_Series'],'URL']}")
     if ns_flag:
         root = \
-            et.Element('{0}{1}'.format(name_space, 'DS_Series'), nsmap=ns_all)
+            et.Element(f"{name_space}{'DS_Series'}", nsmap=ns_all)
     else:
         root = et.Element('DS_Series')
 
@@ -338,27 +388,29 @@ def iso_xml_structure(excel_file, iso_template, iso_params, iso_values,
     ref['DS_Series'] = root
     for i in range(1, level_count):
         indices = [k for k, x in enumerate(iso_element_count) if x == i+1]
-        for k in range(len(indices)):
+        index_count = len(indices)
+        for k in range(index_count):
             element = iso_template[indices[k]]
             parent = ref[element.rsplit('/',1)[0]]
             param = element.rsplit('/',1)[1]
             if 'EOS_AdditionalAttributes' in element:
-                name_space = ('{%s}' % ns_lut.at['eos','URL'])
+                name_space = (f"{ns_lut.at['eos','URL']}")
             elif ('acquisitionInformation' in element) and \
                 param in ('identifier','description','type'):
-                name_space = ('{%s}' % ns_lut.at['gmi','URL'])
+                name_space = (f"{ns_lut.at['gmi','URL']}")
             else:
-                name_space = ('{%s}' % \
-                    ns_lut.at[ns_pairs[param.split('[')[0]],'URL'])
+                name_space = \
+                    (f"{ns_lut.at[ns_pairs[param.split('[')[0]],'URL']}")
             if ns_flag:
-                child = et.SubElement(parent, '{0}{1}'.format(name_space,
-                    param.split('[')[0], ns_map=ns_all))
+                child = et.SubElement(parent,
+                    f"{name_space}{param.split('[')[0]}", ns_map=ns_all)
             else:
                 child = et.SubElement(parent, param.split('[')[0])
             ref[element] = child
 
     ## Add values
-    for i in range(len(iso_params)):
+    iso_param_count = len(iso_params)
+    for i in range(iso_param_count):
         element = iso_params[i]
         param = element.rsplit('/',1)[1]
         if (param == 'value') and (('result/value' not in element) or \
@@ -367,29 +419,29 @@ def iso_xml_structure(excel_file, iso_template, iso_params, iso_values,
         elif param == 'id':
             reference = ref[element.rsplit('/',1)[0]]
             name_space = \
-                ('{%s}' % ns_lut.at[ns_pairs[param.split('[')[0]],'URL'])
+                (f"{ns_lut.at[ns_pairs[param.split('[')[0]],'URL']}")
             if ns_flag:
-                ns_param = '{0}{1}'.format(name_space, param.split('[')[0],
-                    ns_map=ns_all)
+                ns_param = (f"{name_space}{param.split('[')[0]}",
+                    "ns_map=ns_all")
             else:
                 ns_param = param.split('[')[0]
             reference.attrib[ns_param] = str(iso_values[i])
         elif param in ('href','nilReason'):
             reference = ref[element.rsplit('/',1)[0]]
             name_space = \
-                ('{%s}' % ns_lut.at[ns_pairs[param.split('[')[0]],'URL'])
+                (f"{ns_lut.at[ns_pairs[param.split('[')[0]],'URL']}")
             if ns_flag:
-                ns_param = '{0}{1}'.format(name_space, param.split('[')[0],
-                    ns_map=ns_all)
+                ns_param = (f"{name_space}{param.split('[')[0]}",
+                    "ns_map=ns_all")
             else:
                 ns_param = param.split('[')[0]
             reference.attrib[ns_param] = str(iso_values[i])
         elif param == 'type':
             reference = ref[element.rsplit('/',1)[0]]
-            name_space = ('{%s}' % ns_lut.at['xsi','URL'])
+            name_space = (f"{ns_lut.at['xsi','URL']}")
             if ns_flag:
-                ns_param = '{0}{1}'.format(name_space, param.split('[')[0],
-                    ns_map=ns_all)
+                ns_param = (f"{name_space}{param.split('[')[0]}",
+                    "ns_map=ns_all")
             else:
                 ns_param = param.split('[')[0]
             reference.attrib[ns_param] = str(iso_values[i])
@@ -399,7 +451,7 @@ def iso_xml_structure(excel_file, iso_template, iso_params, iso_values,
             reference.text = str(iso_values[i-1])
         elif param.split('[')[0] in ns_pairs:
             name_space = \
-                ('{%s}' % ns_lut.at[ns_pairs[param.split('[')[0]],'URL'])
+                (f"{ns_lut.at[ns_pairs[param.split('[')[0]],'URL']}")
             reference = ref[element]
             reference.text = str(iso_values[i])
             if 'Code' in param:
@@ -412,10 +464,10 @@ def iso_xml_structure(excel_file, iso_template, iso_params, iso_values,
                 reference.attrib['codeList'] = code_url
                 reference.attrib['codeListValue'] = str(iso_values[i])
             if param == 'RecordType':
-                name_space = ('{%s}' % ns_lut.at['xlink','URL'])
+                name_space = (f"{ns_lut.at['xlink','URL']}")
                 if ns_flag:
-                    ns_param = '{0}{1}'.format(name_space, 'href',
-                        ns_map=ns_all)
+                    ns_param = (f"{name_space}{'href'}",
+                        "ns_map=ns_all")
                 else:
                     ns_param = param.split('[')[0]
                 reference.attrib[ns_param] = "http://earthdata.nasa.gov/" \
@@ -434,7 +486,8 @@ def add_dem_attributes(iso_attributes, dem_attributes, iso_template,
     max_identification_index = 0
     max_content_info = 0
     max_content_index = 0
-    for i in range(len(iso_template)):
+    iso_template_count = len(iso_template)
+    for i in range(iso_template_count):
         test_level = iso_template[i][-2:-1]
         if iso_template[i][:-3].endswith('identificationInfo'):
             if max_identification_info < int(test_level):
@@ -450,7 +503,8 @@ def add_dem_attributes(iso_attributes, dem_attributes, iso_template,
 
     ### Analyze DEM template
     max_index = 0
-    for i in range(len(dem_template)):
+    dem_template_count = len(dem_template)
+    for i in range(dem_template_count):
         if 'identificationInfo' in dem_template[i] and max_index < i:
             max_index = i
 
@@ -539,7 +593,7 @@ def meta_json_file(meta_structure, json_file):
     """Write metadata structure to JSON file"""
 
     ### Write JSON file
-    with open(json_file, 'w') as file:
+    with open(json_file, 'w', encoding='utf-8') as file:
         json.dump(meta_structure, file, indent=2)
 
 
@@ -547,7 +601,7 @@ def meta_xml_file(meta_structure, xml_file):
     """Write metaadata structure to XML File"""
 
     ### Write XML file
-    with open(xml_file, 'wb') as file:
+    with open(xml_file, 'wb', encoding='utf-8') as file:
         file.write(et.tostring(meta_structure,
             xml_declaration=True, encoding='utf-8',
             pretty_print=True))
@@ -587,7 +641,8 @@ def get_metadata_values(meta_file, params):
             elem.tag = elem.tag[i+1:]
     objectify.deannotate(root, cleanup_name_spaces=True)
 
-    for i in range(len(params)):
+    param_count = len(params)
+    for i in range(param_count):
         try:
             param = tree.xpath('/'+params[i])[0].text
             product_params.append(get_value(param))
@@ -609,9 +664,11 @@ def product_dictionary2values(values, prod_dict):
 
     dict_keys = list(prod_dict.keys())
     prod_values = []
-    for i in range(len(values)):
+    value_count = len(values)
+    for i in range(value_count):
         keys = []
-        for k in range(len(dict_keys)):
+        dict_key_count = len(dict_keys)
+        for k in range(dict_key_count):
             if str(values[i]).count(dict_keys[k]) > 0:
                 keys.append(dict_keys[k])
         for key in keys:
@@ -627,7 +684,7 @@ def product_dictionary2values(values, prod_dict):
                     values[i] = bool(values[i])
                 elif isinstance(prod_dict[key], int):
                     values[i] = int(values[i])
-            except:
+            except ValueError:
                 pass
 
         prod_values.append(values[i])
@@ -639,9 +696,10 @@ def granule_iso2umm_values(iso_params, iso_values, iso2umm, umm_values):
     """Convert granule ISO to UMM values"""
 
     (param_count, _) = iso2umm.shape
-    for k in range(len(umm_values)):
+    umm_value_count = len(umm_values)
+    for k in range(umm_value_count):
         for i in range(param_count):
-            umm_param_string = ('{# UMM_%s #}' % iso2umm.at[i, 'UMM'])
+            umm_param_string = (f"{{# UMM_{iso2umm.at[i, 'UMM']} #}}")
             if umm_param_string == umm_values[k]:
                 iso_index = iso_params.index(iso2umm.at[i, 'ISO'])
                 umm_values[k] = iso_values[iso_index]
@@ -664,7 +722,7 @@ def properties2values(template, properties):
                     values.append(int(properties[param]))
                 else:
                     values.append(properties[param])
-            except:
+            except ValueError:
                 pass
         else:
             values.append(param)
@@ -680,7 +738,8 @@ def clean_json_structure(iso_structure):
 
     identification_info = meta['identificationInfo']
     new_identification = []
-    for i in range(len(identification_info)):
+    identification_info_count = len(identification_info)
+    for i in range(identification_info_count):
         value = identification_info[i]['MD_DataIdentification']['citation'] \
             ['CI_Citation']['title']['FileName']
         if not value.startswith('{# ISO'):
@@ -689,7 +748,8 @@ def clean_json_structure(iso_structure):
 
     content_info = meta['contentInfo']
     new_content = []
-    for i in range(len(content_info)):
+    content_info_count = len(content_info)
+    for i in range(content_info_count):
         mi_band = \
             content_info[i]['MD_CoverageDescription']['dimension']['MI_Band']
         if 'maxValue' in mi_band:
@@ -728,44 +788,49 @@ def clean_xml_structure(iso_file):
     identification_info_count = 0
     content_info_count = 0
     remove = []
-    for i in range(len(meta)):
+    meta_count = len(meta)
+    for i in range(meta_count):
         if 'identificationInfo' in meta[i].tag:
-            file_name = doc.xpath('/gmd:DS_Series/gmd:composedOf/' \
-                'gmd:DS_DataSet/gmd:has/gmi:MI_Metadata/' \
-                'gmd:identificationInfo[{0}]/gmd:MD_DataIdentification/' \
-                'gmd:citation/gmd:CI_Citation/gmd:title/gmx:FileName' \
-                .format(identification_info_count+1), namespaces=ns_all)[0].text
+            xml = ('/gmd:DS_Series/gmd:composedOf/'
+                'gmd:DS_DataSet/gmd:has/gmi:MI_Metadata/'
+                f'gmd:identificationInfo[{identification_info_count+1}]/'
+                'gmd:MD_DataIdentification/'
+                'gmd:citation/gmd:CI_Citation/gmd:title/gmx:FileName')
+            file_name = doc.xpath(xml, namespaces=ns_all)[0].text
             if file_name.startswith('{# ISO'):
                 remove.append(i)
             identification_info_count += 1
         elif 'contentInfo' in meta[i].tag:
-            mi_band = doc.xpath('/gmd:DS_Series/gmd:composedOf/' \
-                'gmd:DS_DataSet/gmd:has/gmi:MI_Metadata/' \
-                'gmd:contentInfo[{0}]/gmd:MD_CoverageDescription/' \
-                'gmd:dimension/gmi:MI_Band'.format(content_info_count+1),
-                namespaces=ns_all)[0]
+            xml = ('/gmd:DS_Series/gmd:composedOf/'
+                'gmd:DS_DataSet/gmd:has/gmi:MI_Metadata/'
+                f'gmd:contentInfo[{content_info_count+1}]/'
+                'gmd:MD_CoverageDescription/gmd:dimension/gmi:MI_Band')
+            mi_band = doc.xpath(xml, namespaces=ns_all)[0]
             if 'maxValue' in mi_band[0].tag:
-                value = doc.xpath('/gmd:DS_Series/gmd:composedOf/' \
-                    'gmd:DS_DataSet/gmd:has/gmi:MI_Metadata/' \
-                    'gmd:contentInfo[{0}]/gmd:MD_CoverageDescription/' \
-                    'gmd:dimension/gmi:MI_Band/gmd:maxValue/gco:Real' \
-                    .format(content_info_count+1), namespaces=ns_all)[0].text
+                xml = ('/gmd:DS_Series/gmd:composedOf/'
+                    'gmd:DS_DataSet/gmd:has/gmi:MI_Metadata/'
+                    f'gmd:contentInfo[{content_info_count+1}]/'
+                    'gmd:MD_CoverageDescription/gmd:dimension/gmi:MI_Band/'
+                    'gmd:maxValue/gco:Real')
+                value = doc.xpath(xml, namespaces=ns_all)[0].text
             elif 'otherPropertyType' in mi_band[0].tag:
-                value = doc.xpath('/gmd:DS_Series/gmd:composedOf/' \
-                    'gmd:DS_DataSet/gmd:has/gmi:MI_Metadata/' \
-                    'gmd:contentInfo[{0}]/gmd:MD_CoverageDescription/' \
-                    'gmd:dimension/gmi:MI_Band/eos:otherProperty/gco:Record/' \
-                    'eos:additionalAttributes/eos:EOS_AdditionalAttributes/' \
-                    'eos:additionalAttribute[1]/eos:EOS_AdditionalAttribute/' \
-                    'eos:value/eos:CharacterString' \
-                    .format(content_info_count+1), namespaces=ns_all)[0].text
+                xml = ('/gmd:DS_Series/gmd:composedOf/'
+                    'gmd:DS_DataSet/gmd:has/gmi:MI_Metadata/'
+                    f'gmd:contentInfo[{content_info_count+1}]/'
+                    'gmd:MD_CoverageDescription/gmd:dimension/gmi:MI_Band/'
+                    'eos:otherProperty/gco:Record/eos:additionalAttributes/'
+                    'eos:EOS_AdditionalAttributes/eos:additionalAttribute[1]/'
+                    'eos:EOS_AdditionalAttribute/eos:value/'
+                    'eos:CharacterString')
+                value = doc.xpath(xml, namespaces=ns_all)[0].text
             try:
                 float(value)
             except ValueError:
                 remove.append(i)
             content_info_count += 1
 
-    for i in range(len(remove)-1,-1,-1):
+    remove_count = len(remove)-1
+    for i in range(remove_count,-1,-1):
         del meta[remove[i]]
 
     return doc
@@ -929,7 +994,8 @@ def gamma_rtc_log2meta(data_type, meta_file, log_file):
         true_shadow = 0.0
         shadow = 0.0
         pixel_count -= float(histogram[0])
-        for i in range(len(histogram)):
+        histogram_count = len(histogram)
+        for i in range(histogram_count):
             if i & 1:
                 no_layover_shadow += float(histogram[i]) / pixel_count
             if i & 2:
@@ -979,3 +1045,77 @@ def gamma_rtc_log2meta(data_type, meta_file, log_file):
     meta['ISO_RTC_southBoundLatitude'] = lat_min
 
     return meta
+
+
+def project_template2dict(excel_file, worksheet, level, data):
+    """Convert project template to JSON dictionary"""
+
+    ### Project metadata structure
+    print(f'Metadata level: {level}')
+    meta = pd.read_excel(excel_file, sheet_name=worksheet)
+    if level == 'short':
+        meta = meta[meta['Level']=='short']
+        meta.reset_index(inplace=True, drop=True)
+
+    (row_count, column_count) = meta.shape
+    level_count = column_count - 6
+
+    ### Read all entries from the dataframe into the template
+    project_template = dataframe2template(meta, level_count)
+
+    ### Collect elements that contain lists
+    duplicates = []
+    list_counts = []
+    flat_data = flatdict.FlatDict(data, delimiter='.')
+    for i in range(level_count):
+        for k in range(row_count):
+            occurences = \
+                [x.start() for x in re.finditer('/', project_template[k])]
+            if len(occurences) == i:
+                if 'list' in meta.at[k,'Type']:
+                    list_counts.append(int(flat_data[meta.at[k,'Value'][3:-3]]))
+                    duplicates.append(project_template[k])
+    list_params = [item for item, \
+        count in collections.Counter(duplicates).items() if count > 0]
+    if len(list_params) > 0:
+        meta = add_duplicates2metadata(meta, list_params, list_counts)
+        (row_count, _) = meta.shape
+        project_template = dataframe2template(meta, level_count)
+        project_template = update_template(project_template, list_params)
+
+    ### Read parameters out of template
+    project_params = []
+    project_values = []
+    for i in range(row_count):
+        if 'attribute' in meta.at[i,'Type']:
+            attrib = project_template[i] + '/@' + str(meta.at[i,'Attribute'])
+            project_params.append(attrib)
+            project_values.append(meta.at[i,'AttributeValue'])
+        if 'value' in meta.at[i,'Type']:
+            project_params.append(project_template[i])
+            project_values.append(meta.at[i,'Value'])
+
+    ### Build dataframe with parameters
+    df_params = get_params_dataframe(project_params)
+    (_, old_level) = df_params.shape
+    old_level -= 1
+    dict_list = \
+        params2dict_list(df_params, project_params, project_values, old_level)
+
+    ### Build dictionary structure - one level at a time
+    for new_level in reversed(range(old_level)):
+
+        new_dict_list = params2dict_list(df_params, project_params,
+            project_values, new_level)
+        dict_list += new_dict_list
+        dict_list = upgrade_dictionary2level(dict_list, old_level, new_level)
+        level_params = get_level_params_list(project_template,
+            list(meta['Attribute']), new_level)
+        dict_list = merge_dictionary_params(dict_list, level_params, old_level,
+            new_level)
+        old_level = new_level
+
+    project_dict = {}
+    project_dict[dict_list[0]['key']] = dict_list[0]['dict']
+
+    return project_dict
