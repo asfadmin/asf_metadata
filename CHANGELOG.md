@@ -34,7 +34,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- Added functionality for generating project metadata.
+- Added functionality for generating project metadata. 
 
 ### Fixed
 
