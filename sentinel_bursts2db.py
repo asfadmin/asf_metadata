@@ -30,7 +30,7 @@ def sentinel_bursts2db(zip_url, burst_map_file, config_file):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(prog='sentinel_bursts2db',
-        description='Extract burst information from a remote granule zip ' \
+        description='Extract burst information from a remote granule zip '
             'file and save it into database',
         formatter_class=RawTextHelpFormatter)
     parser.add_argument('zip_url', metavar='<zip file URL>',

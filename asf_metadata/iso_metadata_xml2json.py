@@ -15,14 +15,14 @@ def iso_metadata_xml2json(excelFile, demFile, xmlFile, jsonFile):
   if demFile:
     (demTemplate, demParams, demValues) = \
       iso_template2lists(demFile, 'ISO Metadata Structure')
-    (isoTemplate, isoParams, isoValues) = add_dem_lists(isoTemplate, \
+    (isoTemplate, isoParams, isoValues) = add_dem_lists(isoTemplate,
       isoParams, isoValues, demTemplate, demParams, demValues)
 
   ### Extract values from ISO XML
   isoProdValues = get_metadata_values(xmlFile, isoParams)
 
   ### Write ISO metadata to JSON
-  isoStructure = iso_dictionary_structure(excelFile, demFile, isoTemplate, \
+  isoStructure = iso_dictionary_structure(excelFile, demFile, isoTemplate,
     isoParams, isoProdValues)
   meta_json_file(isoStructure, jsonFile)
 

@@ -54,7 +54,7 @@ def sentinel_bursts_geojson2umm(excel_file, json_file, out_dir):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(prog='sentinel_bursts_geojson2umm.py',
-        description='Convert Sentinel-1 bursts metadata from GeoJSON to ' \
+        description='Convert Sentinel-1 bursts metadata from GeoJSON to '
         'UMM JSON format', formatter_class=RawTextHelpFormatter)
     parser.add_argument('excel_file', metavar='<Excel template>',
         help='name of the Excel template spreadsheet')

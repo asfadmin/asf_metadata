@@ -7,7 +7,7 @@ import collections
 import re
 import os
 import glob
-import lxml.etree as et
+import defusedxml.ElementTree as et
 from lxml import objectify
 import pandas as pd
 import numpy as np
@@ -783,7 +783,7 @@ def clean_xml_structure(iso_file):
 
     parser = et.XMLParser(remove_blank_text=True)
     doc = et.parse(iso_file, parser)
-    meta = doc.xpath('/gmd:DS_Series/gmd:composedOf/gmd:DS_DataSet' \
+    meta = doc.xpath('/gmd:DS_Series/gmd:composedOf/gmd:DS_DataSet'
         '/gmd:has/gmi:MI_Metadata', namespaces=ns_all)[0]
     identification_info_count = 0
     content_info_count = 0
@@ -858,7 +858,7 @@ def gamma_rtc_log2meta(data_type, meta_file, log_file):
         value = parse_line(line, 'value')
         if value and value.startswith('geoid file'):
             meta['ISO_RTC_GammaVersion'] = \
-                [i for i in value.split('/') \
+                [i for i in value.split('/')
                     if 'GAMMA_SOFTWARE' in i][0].split('-')[1]
         elif value and value.startswith('number of azimuth looks'):
             meta['ISO_RTC_azimuthLooks'] = int(value.split(':')[1])
@@ -875,13 +875,13 @@ def gamma_rtc_log2meta(data_type, meta_file, log_file):
         manifest = read_manifest_file(manifest_file)
         doc = et.fromstring(manifest['metadataSection'])
         meta['ISO_RTC_startTime'] = \
-            doc.xpath('/metadataSection/metadataObject' \
-            '[@ID="acquisitionPeriod"]/metadataWrap/xmlData/' \
+            doc.xpath('/metadataSection/metadataObject'
+            '[@ID="acquisitionPeriod"]/metadataWrap/xmlData/'
             'safe:acquisitionPeriod/safe:startTime',
             namespaces=ns_all)[0].text + 'Z'
         meta['ISO_RTC_stopTime'] = \
-            doc.xpath('/metadataSection/metadataObject' \
-            '[@ID="acquisitionPeriod"]/metadataWrap/xmlData/' \
+            doc.xpath('/metadataSection/metadataObject'
+            '[@ID="acquisitionPeriod"]/metadataWrap/xmlData/'
             'safe:acquisitionPeriod/safe:stopTime',
             namespaces=ns_all)[0].text + 'Z'
 
@@ -899,7 +899,7 @@ def gamma_rtc_log2meta(data_type, meta_file, log_file):
         meta['ISO_RTC_orbitPassDirection'] = \
             doc.xpath('/generalAnnotation/productInformation/pass')[0].text.lower()
         speed_of_light = 299792458.0
-        frequency = float(doc.xpath('/generalAnnotation/productInformation/' \
+        frequency = float(doc.xpath('/generalAnnotation/productInformation/'
             'radarFrequency')[0].text)
         meta['ISO_RTC_wavelength'] = speed_of_light / frequency
 
@@ -1075,7 +1075,7 @@ def project_template2dict(excel_file, worksheet, level, data):
                 if 'list' in meta.at[k,'Type']:
                     list_counts.append(int(flat_data[meta.at[k,'Value'][3:-3]]))
                     duplicates.append(project_template[k])
-    list_params = [item for item, \
+    list_params = [item for item,
         count in collections.Counter(duplicates).items() if count > 0]
     if len(list_params) > 0:
         meta = add_duplicates2metadata(meta, list_params, list_counts)
