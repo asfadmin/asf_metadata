@@ -31,8 +31,6 @@ greenlet==1.1.2
     # via sqlalchemy
 idna==3.3
     # via requests
-lxml==4.8.0
-    # via -r ./requirements.in
 munch==2.5.0
     # via fiona
 numpy==1.22.3
