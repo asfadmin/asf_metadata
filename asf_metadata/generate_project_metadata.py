@@ -92,10 +92,10 @@ if __name__ == '__main__':
     parser.add_argument('meta_file',
         help='name of the output metadata JSON file')
     parser.add_argument('-meta_level', default='comprehensive',
-        help='level of metadata (defaut: comprehensive)\n' \
+        help='level of metadata (defaut: comprehensive)\n'
             'choices: ["comprehensive", "short"]')
     parser.add_argument('-meta_status', default='draft',
-        help='status of metadata (default: draft)\n' \
+        help='status of metadata (default: draft)\n'
             'choices: ["draft", "final"]')
     if len(sys.argv) == 1:
         parser.print_help()

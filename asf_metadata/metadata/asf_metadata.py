@@ -8,7 +8,6 @@ import re
 import os
 import glob
 import defusedxml.ElementTree as et
-from lxml import objectify
 import pandas as pd
 import numpy as np
 from osgeo import gdal, osr
@@ -615,48 +614,6 @@ def generate_product_dictionary(product_type, data_type, meta_file,
         meta = gamma_rtc_log2meta(data_type, meta_file, log_file)
 
     return meta
-
-
-def get_metadata_values(meta_file, params):
-    """Get metadata values"""
-
-    product_params = []
-
-    parser = et.XMLParser(remove_blank_text=True)
-    tree = et.parse(meta_file, parser)
-    root = tree.getroot()
-    for elem in root.getiterator():
-        if len(elem.attrib) > 0:
-            key = elem.attrib.keys()
-            item = elem.attrib.items()
-            (key, value) = item[0]
-            if '}' in key:
-                del elem.attrib[key]
-                key = key.split('}')[1]
-                elem.set(key, value)
-        if not hasattr(elem.tag, 'find'):
-            continue
-        i = elem.tag.find('}')
-        if i >= 0:
-            elem.tag = elem.tag[i+1:]
-    objectify.deannotate(root, cleanup_name_spaces=True)
-
-    param_count = len(params)
-    for i in range(param_count):
-        try:
-            param = tree.xpath('/'+params[i])[0].text
-            product_params.append(get_value(param))
-        except:
-            (element, attribute) = params[i].rsplit('/',1)
-            if attribute != 'value':
-                element_attribute = ('/'+element+'/@'+attribute)
-                param = tree.xpath(element_attribute)[0]
-                product_params.append(get_value(param))
-            else:
-                param = tree.xpath('/'+element)[0].text
-                product_params.append(get_value(param))
-
-    return product_params
 
 
 def product_dictionary2values(values, prod_dict):
