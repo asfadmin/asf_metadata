@@ -233,7 +233,7 @@ def get_dict_list_params(dict_list, old_level, new_level):
     dict_parents = []
     dict_params = []
     for dict_element in dict_list:
-        dict_parents.append(dict_element['path'] \
+        dict_parents.append(dict_element['path']
             .rsplit('/',old_level-new_level)[0])
         dict_params.append(dict_element['path'])
 

@@ -2,7 +2,8 @@
 from setuptools import find_packages, setup
 
 requirements = [
-    "lxml",
+    "defusedxml",
+    "flatdict",
     "numpy",
     "scipy",
     "openpyxl",

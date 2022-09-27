@@ -19,7 +19,7 @@ def generate_iso_template(excel_file, dem_file, iso_base):
     if dem_file:
         (dem_template, dem_params, dem_values) = \
         iso_template2lists(dem_file, 'ISO Metadata Structure')
-        (iso_template, iso_params, iso_values) = add_dem_lists(iso_template, \
+        (iso_template, iso_params, iso_values) = add_dem_lists(iso_template,
         iso_params, iso_values, dem_template, dem_params, dem_values)
 
     ### Write ISO template to files
@@ -27,7 +27,7 @@ def generate_iso_template(excel_file, dem_file, iso_base):
     iso_structure = iso_xml_structure(excel_file, iso_template, iso_params,
         iso_values, True)
     meta_xml_file(iso_structure, iso_base + '.xml')
-    iso_structure = iso_dictionary_structure(excel_file, dem_file, \
+    iso_structure = iso_dictionary_structure(excel_file, dem_file,
         iso_template, iso_params, iso_values)
     meta_json_file(iso_structure, iso_base + '.json')
 

@@ -30,6 +30,18 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ------
 
+## [0.1.1](https://github.com/asfadmin/asf_metadata/compare/v0.1.0...v0.1.1)
+
+### Added
+
+- Added functionality for generating project metadata. 
+
+### Fixed
+
+- Code changes in response to codefactor complaints.
+
+------
+
 ## [0.0.7](https://github.com/asfadmin/asf_metadata/compare/v0.0.6...v0.0.7)
 
 ### Added

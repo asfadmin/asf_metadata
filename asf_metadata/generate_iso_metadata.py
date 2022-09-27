@@ -34,7 +34,7 @@ def generate_iso_metadata(meta_file, log_file, iso_base, product_type,
     if dem_type:
         (dem_template, dem_params, dem_values) = \
             iso_template2lists(dem_file, 'ISO Metadata Structure')
-        (iso_template, iso_params, iso_values) = add_dem_lists(iso_template, \
+        (iso_template, iso_params, iso_values) = add_dem_lists(iso_template,
             iso_params, iso_values, dem_template, dem_params, dem_values)
     else:
         dem_params = None
@@ -50,7 +50,7 @@ def generate_iso_metadata(meta_file, log_file, iso_base, product_type,
     ### Write ISO metadata to XML
     iso_file = iso_base + '.iso.xml'
     print(f'Writing ISO metadata structure to XML file ({iso_file}) ...')
-    iso_structure = iso_xml_structure(excel_file, iso_template, iso_params, \
+    iso_structure = iso_xml_structure(excel_file, iso_template, iso_params,
         iso_prod_values, True)
     meta_xml_file(iso_structure, iso_file)
     iso_structure = clean_xml_structure(iso_file)
@@ -59,7 +59,7 @@ def generate_iso_metadata(meta_file, log_file, iso_base, product_type,
     ### Write ISO metadata to JSON
     iso_file = iso_base + '.iso.json'
     print(f'Writing ISO metadata structure to JSON file ({iso_file}) ...')
-    iso_structure = iso_dictionary_structure(excel_file, dem_file, \
+    iso_structure = iso_dictionary_structure(excel_file, dem_file,
         iso_template, iso_params, iso_prod_values)
     iso_structure = clean_json_structure(iso_structure)
     meta_json_file(iso_structure, iso_file)
@@ -70,18 +70,18 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(prog='generate_iso_metadata.py',
         description='Generate ISO metadata file from Excel spreadsheet',
         formatter_class=RawTextHelpFormatter)
-    parser.add_argument('meta_file', help='file path of product metadata ' \
+    parser.add_argument('meta_file', help='file path of product metadata '
         'such as a "manifest.safe" or leader file')
     parser.add_argument('log_file', help='name of RTC processing log file')
     parser.add_argument('iso_base', help='basename of the ISO XML metadata file')
     parser.add_argument('-product', default='gamma_rtc',
-        help='name of the product type (default: gamma_rtc)\n' \
+        help='name of the product type (default: gamma_rtc)\n'
             'choices: ["gamma_rtc"]')
     parser.add_argument('-data', default='sentinel',
-        help='name of the data source (default: sentinel)\n' \
+        help='name of the data source (default: sentinel)\n'
             'choices: ["sentinel"]')
     parser.add_argument('-dem', default=None,
-        help='DEM type used for terrain correction\n' \
+        help='DEM type used for terrain correction\n'
             'choices: ["copernicus"]')
     if len(sys.argv) == 1:
         parser.print_help()

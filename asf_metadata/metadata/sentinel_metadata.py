@@ -4,7 +4,7 @@
 import os
 from datetime import datetime, timedelta
 import json
-import lxml.etree as et
+import defusedxml.ElementTree as et
 from osgeo import gdal, osr, ogr
 import pandas as pd
 import geopandas as gpd
@@ -32,7 +32,7 @@ def get_latlon_extent(filename):
     """Get lat/lon extent"""
 
     src = gdal.Open(filename)
-    ulx, xres, _, uly, _, yres  = src.GetGeoTransform()
+    ulx, xres, _, uly, _, yres = src.GetGeoTransform()
     lrx = ulx + (src.RasterXSize * xres)
     lry = uly + (src.RasterYSize * yres)
 
