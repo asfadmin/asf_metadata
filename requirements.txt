@@ -19,10 +19,12 @@ click-plugins==1.1.1
     # via fiona
 cligj==0.7.2
     # via fiona
+defusedxml==0.7.1
 et-xmlfile==1.1.0
     # via openpyxl
 fiona==1.8.21
     # via geopandas
+flatdict==4.0.1
 geoalchemy2==0.11.1
     # via -r ./requirements.in
 geopandas==0.10.2

@@ -3,6 +3,7 @@ from setuptools import find_packages, setup
 
 requirements = [
     "defusedxml",
+    "flatdict",
     "numpy",
     "scipy",
     "openpyxl",
