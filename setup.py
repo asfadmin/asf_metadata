@@ -2,6 +2,7 @@
 from setuptools import find_packages, setup
 
 requirements = [
+    "defusedxml",
     "numpy",
     "scipy",
     "openpyxl",
